@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <!-- Programmer's Picnic — Zoom Lesson (Blogger HTML) -->
+<!-- Paste this into Blogger post (HTML view). Replace placeholders (ZOOM_LINK, WA_NUMBER, me.png) with real values. -->
+<link rel="stylesheet" href="https://varanasi-software-junction.github.io/blogger/blogger-assets/crx_styles_v1.css">
+<style>
+  /* Small local overrides to give a saffron picnic look and ensure blogger compatibility */
+  :root{
+    --accent:#f2a007; /* saffron accent */
+    --muted:#6b6b6b;
+    --card-bg: #fffdf8;
+  }
+  .pp-header{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px;
+    border-radius:12px;
+    background: linear-gradient(90deg, rgba(242,160,7,0.10), rgba(255,255,255,0.05));
+    box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+    margin-bottom:18px;
+  }
+  .pp-brand { display:flex; gap:12px; align-items:center; }
+  .pp-brand img{ width:64px; height:64px; border-radius:12px; object-fit:cover; transform: rotate(-6deg); box-shadow:0 6px 18px rgba(0,0,0,0.08);}
+  .pp-title{ font-family: "Playfair Display", serif; font-size:1.6rem; margin:0; color:#222; }
+  .pp-sub{ color:var(--muted); font-size:0.95rem; margin:0; }
+  .pp-meta{ text-align:right; }
+  .action-row{ display:flex; gap:10px; margin:14px 0; flex-wrap:wrap; }
+  .btn {
+    background: var(--accent);
+    color:#fff;
+    border:none;
+    padding:10px 16px;
+    border-radius:10px;
+    text-decoration:none;
+    font-weight:600;
+    box-shadow: 0 6px 18px rgba(242,160,7,0.18);
+  }
+  .btn-outline{ background:transparent; border:1px solid #f0c37a; color:#333; }
+  .card { background:var(--card-bg); padding:16px; border-radius:12px; margin-bottom:14px; box-shadow: 0 6px 18px rgba(15,15,15,0.02);}
+  pre.code { background:#0f1724; color:#e6eef8; padding:12px; border-radius:8px; overflow:auto; }
+  .mcq { margin-top:8px;}
+  .mcq button{ margin-top:8px; }
+  .small{ font-size:0.92rem; color:var(--muted); }
+  .whatsapp-float{ position:fixed; right:18px; bottom:18px; z-index:9999; }
+  /* make branding image appear at right top on wide screens */
+  @media(min-width:900px){
+    .pp-header{ padding-right:28px; }
+    .pp-meta img.brand-small{ width:48px; height:48px; border-radius:10px; transform:none; }
+  }
+</style>
+
+<div class="pp-header">
+  <div class="pp-brand">
+    
+    <img src="https://blogger.googleusercontent.com/img/a/AVvXsEhlfwIqq3YYxj6LMFr4E7IKN2bYIor-bFpbUXBT3Jthp8PKmRdWozV3hEk2xcj3kPrJ9WBIkXCr4lw5MTAz0AE5b0lPhQ2ReNbCmMOumP4zLTEOb7GY6s4YWcgcCfzltJVmQcgCObeQNRvn_SWPa_2c6cROZUOBHhRJB20PaV-peuA3GTSafM8JxgaYu5M=s257" alt="Champak Roy / Brand" />
+    <div>
+      <h1 class="pp-title">Programmer's Picnic — Live Zoom Lesson</h1>
+      <p class="pp-sub">Fun, short lessons for curious programmers — hands-on, friendly, and practical.</p>
+    </div>
+  </div>
+
+  <div class="pp-meta">
+    <div class="small">Zoom Lesson • Interactive • Recording available</div>
+    <div style="margin-top:6px;">
+      <strong style="font-size:1rem;">Date:</strong> <span class="small">[Replace with date]</span><br/>
+      <strong style="font-size:1rem;">Time:</strong> <span class="small">[Replace with time & timezone]</span>
+    </div>
+  </div>
+</div>
+
+<!-- Action Buttons (top) -->
+<div class="action-row">
+  <a class="btn" href="https://us04web.zoom.us/j/4428355179?pwd=yCZrJtx41cUAxDyApDM9eSrre1GSXe.1" target="_blank" rel="noopener"><span  style="color:white !important;">Join Zoom Lesson</span></a>
+  <a class="btn btn-outline" href="#agenda">See Agenda</a>
+  <a  style="color:white !important;" class="btn" href="https://wa.me/919335874326" target="_blank" rel="noopener">Contact on WhatsApp</a>
+  <a class="btn btn-outline" href="#materials">Materials & Code</a>
+</div>
+
+<!-- Quick summary card -->
+<div class="card">
+  <h3>Lesson Snapshot</h3>
+  <p class="small">Topic: <strong>Algorithm picnic — Visualizing sorting & small utilities</strong></p>
+  <p class="small">Level: Beginner → Intermediate</p>
+  <p>Short description: Join us for a 40-minute interactive Zoom where we explain a compact algorithm, show pseudocode, implement it in Python , run a tiny demo, and finish with a 5-question MCQ lightning quiz.</p>
+</div>
+
+<!-- Agenda -->
+<div id="agenda" class="card">
+  <h3>Agenda</h3>
+  <ol>
+    <li>Welcome & quick icebreaker </li>
+    <li>Concept introduction & intuition </li>
+    <li>Pseudocode walk-through + dry run on whiteboard </li>
+    <li>Code implementations & live demo </li>
+    <li>MCQ quiz + recap</li>
+    <li>Q&A and next steps </li>
+  </ol>
+</div>
+
+<!-- Learning outcomes -->
+<div class="card" id="outcomes">
+  <h3>Learning Outcomes</h3>
+  <ul>
+    <li>Understand the algorithm's idea and when to use it.</li>
+    <li>Read and follow pseudocode and dry-run examples.</li>
+    <li>Implement the algorithm quickly in your preferred language.</li>
+    <li>Spot basic complexity and possible optimisations.</li>
+  </ul>
+</div>
+
+<!-- Pre-work -->
+<div class="card" id="prework">
+  <h3>Pre-work (Optional)</h3>
+  <p class="small">Please bring a laptop with a code editor or open browser console. If possible, paste the code snippets shared in the 'Materials' section into your editor before the meeting.</p>
+</div>
+
+<!-- Pseudocode & dry run -->
+<div class="card">
+  <h3>Pseudocode — (Simple example: "Mini Insertion Sort" for small arrays)</h3>
+  
+  <p class="small">We'll do a whiteboard-style dry run on the sample array and annotate each swap step live.</p>
+</div>
+
+<!-- Code samples in multiple languages -->
+<div id="materials" class="card">
+  <h3>Code — Implementations</h3>
+
+  <h4>Python</h4>
+  <pre class="code">
+def mini_insertion_sort(arr):
+    for i in range(1, len(arr)):
+        key = arr[i]
+        j = i - 1
+        while j >= 0 and arr[j] > key:
+            arr[j+1] = arr[j]
+            j -= 1
+        arr[j+1] = key
+    return arr
+
+# Example:
+print(mini_insertion_sort([5,2,7,3]))
+  </pre>
+
+   
+   
+   
+  <p class="small">You can copy-paste any snippet and run it during the live demo. We'll run the JS in the browser console for immediate visual feedback.</p>
+</div>
+
+<!-- Complexity -->
+<div class="card">
+  <h3>Complexity & Notes</h3>
+  <ul>
+    <li>Time complexity: <strong>O(n²)</strong> worst-case, <strong>O(n)</strong> best-case (already sorted).</li>
+    <li>Space complexity: <strong>O(1)</strong> (in-place).</li>
+    <li>Good for: small arrays, almost-sorted data, teaching/learning steps.</li>
+  </ul>
+</div>
+
+<!-- Live demo instructions -->
+<div class="card">
+  <h3>Live Demo</h3>
+  <p class="small">During the Zoom we'll open the JS console and demonstrate the snippet. If you want to follow along locally, open your browser console (F12 → Console) and paste the JS snippet from above.</p>
+  <p class="small">If time permits, we'll show a tiny visualisation (bars) and animate the swaps — simple and clean.</p>
+</div>
+
+<!-- MCQ Quiz (interactive) -->
+<div class="card">
+  <h3>Lightning Quiz — 5 MCQs</h3>
+  <div id="mcq-area" class="mcq">
+    <div id="q1" class="q">
+      <p><strong>1.</strong> Best-case time complexity of insertion sort?</p>
+      <label><input type="radio" name="q1" value="a"> O(n²)</label><br>
+      <label><input type="radio" name="q1" value="b"> O(n)</label><br>
+      <label><input type="radio" name="q1" value="c"> O(log n)</label><br>
+    </div>
+
+    <div id="q2" class="q">
+      <p><strong>2.</strong> Is insertion sort stable?</p>
+      <label><input type="radio" name="q2" value="a"> Yes</label><br>
+      <label><input type="radio" name="q2" value="b"> No</label><br>
+    </div>
+
+    <div id="q3" class="q">
+      <p><strong>3.</strong> Space complexity of insertion sort (in-place)?</p>
+      <label><input type="radio" name="q3" value="a"> O(n)</label><br>
+      <label><input type="radio" name="q3" value="b"> O(1)</label><br>
+    </div>
+
+    <div id="q4" class="q">
+      <p><strong>4.</strong> Which input suits insertion sort best?</p>
+      <label><input type="radio" name="q4" value="a"> Large random arrays</label><br>
+      <label><input type="radio" name="q4" value="b"> Small or nearly-sorted arrays</label><br>
+    </div>
+
+    <div id="q5" class="q">
+      <p><strong>5.</strong> In the pseudocode we moved elements to the right. That is an example of:</p>
+      <label><input type="radio" name="q5" value="a"> Swapping adjacent elements only</label><br>
+      <label><input type="radio" name="q5" value="b"> Shifting elements to make space</label><br>
+    </div>
+
+    <button class="btn" onclick="scoreMCQ()">Check Answers</button>
+    <div id="mcq-result" class="small" style="margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- Simple MCQ JS -->
+<script>
+  function scoreMCQ(){
+    const answers = { q1: 'b', q2: 'a', q3: 'b', q4: 'b', q5: 'b' };
+    let score = 0;
+    for (let k in answers){
+      const els = document.getElementsByName(k);
+      let chosen = null;
+      for (let i=0;i<els.length;i++){
+        if (els[i].checked) { chosen = els[i].value; break; }
+      }
+      if (chosen === answers[k]) score++;
+    }
+    const result = document.getElementById('mcq-result');
+    result.innerHTML = 'You scored: <strong>' + score + '</strong> / 5. ';
+    if (score === 5) result.innerHTML += 'Excellent! ✅';
+    else if (score >= 3) result.innerHTML += 'Nice work — good understanding. 👍';
+    else result.innerHTML += 'No worries — we will cover this during the lesson. 🙌';
+  }
+</script>
+
+<!-- Footer / Next steps -->
+<div class="card">
+  <h3>Next Steps & Resources</h3>
+  <ul>
+    <li>Repo & code bundle: <em>We will share a Google Drive / GitHub link during the Zoom</em>.</li>
+    <li>Recording: <em>Will be available within 24 hours after the session.</em></li>
+    <li>Homework: Implement a visualiser or convert the code to another language you prefer.</li>
+  </ul>
+</div>
+
+<!-- Bottom action row and WhatsApp button -->
+<div class="action-row" style="margin-top:12px;">
+  <a class="btn" href="https://us04web.zoom.us/j/4428355179?pwd=yCZrJtx41cUAxDyApDM9eSrre1GSXe.1" target="_blank" rel="noopener">Join Zoom Lesson</a>
+  <a class="btn btn-outline" href="https://wa.me/919335874326" target="_blank" rel="noopener">Contact on WhatsApp</a>
+  <a class="btn" href="#mcq-area">Take Quiz</a>
+</div>
+
+<a class="whatsapp-float" href="https://wa.me/9335874326" target="_blank" rel="noopener" title="Contact on WhatsApp">
+  <img src="https://www.freepnglogos.com/uploads/whatsapp-logo-light-green-png-0.png" alt="WhatsApp" style="width:56px;height:56px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.12);">
+</a>
+
+<!-- small credits -->
+<p class="small" style="margin-top:18px">Prepared by <strong>Champak Roy</strong> — Programmer's Picnic series. If you'd like this template tweaked for a different algorithm or level, tell me which one and I'll update it.</p>
+
+</body>
+</html>
