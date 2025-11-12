@@ -2,7 +2,7 @@
 Sorted
 a=[1,2,4,5,7] Ascending.
 Ordered 
-Ascending [3,5,8,11,15]
+Ascending [3,5,8,11,15]cxxx
 and 
 Descending [15,11,8,5,3]
 
