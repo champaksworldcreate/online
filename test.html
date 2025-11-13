@@ -1,261 +1,584 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-</head>
-<body>
-  <!-- Programmer's Picnic — Zoom Lesson (Blogger HTML) -->
-<!-- Paste this into Blogger post (HTML view). Replace placeholders (ZOOM_LINK, WA_NUMBER, me.png) with real values. -->
-<link rel="stylesheet" href="https://varanasi-software-junction.github.io/blogger/blogger-assets/crx_styles_v1.css">
-<style>
-  /* Small local overrides to give a saffron picnic look and ensure blogger compatibility */
-  :root{
-    --accent:#f2a007; /* saffron accent */
-    --muted:#6b6b6b;
-    --card-bg: #fffdf8;
-  }
-  .pp-header{
-    display:flex;
-    gap:12px;
-    align-items:center;
-    justify-content:space-between;
-    padding:18px;
-    border-radius:12px;
-    background: linear-gradient(90deg, rgba(242,160,7,0.10), rgba(255,255,255,0.05));
-    box-shadow: 0 6px 20px rgba(0,0,0,0.04);
-    margin-bottom:18px;
-  }
-  .pp-brand { display:flex; gap:12px; align-items:center; }
-  .pp-brand img{ width:64px; height:64px; border-radius:12px; object-fit:cover; transform: rotate(-6deg); box-shadow:0 6px 18px rgba(0,0,0,0.08);}
-  .pp-title{ font-family: "Playfair Display", serif; font-size:1.6rem; margin:0; color:#222; }
-  .pp-sub{ color:var(--muted); font-size:0.95rem; margin:0; }
-  .pp-meta{ text-align:right; }
-  .action-row{ display:flex; gap:10px; margin:14px 0; flex-wrap:wrap; }
-  .btn {
-    background: var(--accent);
-    color:#fff;
-    border:none;
-    padding:10px 16px;
-    border-radius:10px;
-    text-decoration:none;
-    font-weight:600;
-    box-shadow: 0 6px 18px rgba(242,160,7,0.18);
-  }
-  .btn-outline{ background:transparent; border:1px solid #f0c37a; color:#333; }
-  .card { background:var(--card-bg); padding:16px; border-radius:12px; margin-bottom:14px; box-shadow: 0 6px 18px rgba(15,15,15,0.02);}
-  pre.code { background:#0f1724; color:#e6eef8; padding:12px; border-radius:8px; overflow:auto; }
-  .mcq { margin-top:8px;}
-  .mcq button{ margin-top:8px; }
-  .small{ font-size:0.92rem; color:var(--muted); }
-  .whatsapp-float{ position:fixed; right:18px; bottom:18px; z-index:9999; }
-  /* make branding image appear at right top on wide screens */
-  @media(min-width:900px){
-    .pp-header{ padding-right:28px; }
-    .pp-meta img.brand-small{ width:48px; height:48px; border-radius:10px; transform:none; }
-  }
-</style>
-
-<div class="pp-header">
-  <div class="pp-brand">
-    
-    <img src="https://blogger.googleusercontent.com/img/a/AVvXsEhlfwIqq3YYxj6LMFr4E7IKN2bYIor-bFpbUXBT3Jthp8PKmRdWozV3hEk2xcj3kPrJ9WBIkXCr4lw5MTAz0AE5b0lPhQ2ReNbCmMOumP4zLTEOb7GY6s4YWcgcCfzltJVmQcgCObeQNRvn_SWPa_2c6cROZUOBHhRJB20PaV-peuA3GTSafM8JxgaYu5M=s257" alt="Champak Roy / Brand" />
-    <div>
-      <h1 class="pp-title">Programmer's Picnic — Live Zoom Lesson</h1>
-      <p class="pp-sub">Fun, short lessons for curious programmers — hands-on, friendly, and practical.</p>
-    </div>
-  </div>
-
-  <div class="pp-meta">
-    <div class="small">Zoom Lesson • Interactive • Recording available</div>
-    <div style="margin-top:6px;">
-      <strong style="font-size:1rem;">Date:</strong> <span class="small">[Replace with date]</span><br/>
-      <strong style="font-size:1rem;">Time:</strong> <span class="small">[Replace with time & timezone]</span>
-    </div>
-  </div>
-</div>
-
-<!-- Action Buttons (top) -->
-<div class="action-row">
-  <a class="btn" href="https://us04web.zoom.us/j/4428355179?pwd=yCZrJtx41cUAxDyApDM9eSrre1GSXe.1" target="_blank" rel="noopener"><span  style="color:white !important;">Join Zoom Lesson</span></a>
-  <a class="btn btn-outline" href="#agenda">See Agenda</a>
-  <a  style="color:white !important;" class="btn" href="https://wa.me/919335874326" target="_blank" rel="noopener">Contact on WhatsApp</a>
-  <a class="btn btn-outline" href="#materials">Materials & Code</a>
-</div>
-
-<!-- Quick summary card -->
-<div class="card">
-  <h3>Lesson Snapshot</h3>
-  <p class="small">Topic: <strong>Algorithm picnic — Visualizing sorting & small utilities</strong></p>
-  <p class="small">Level: Beginner → Intermediate</p>
-  <p>Short description: Join us for a 40-minute interactive Zoom where we explain a compact algorithm, show pseudocode, implement it in Python , run a tiny demo, and finish with a 5-question MCQ lightning quiz.</p>
-</div>
-
-<!-- Agenda -->
-<div id="agenda" class="card">
-  <h3>Agenda</h3>
-  <ol>
-    <li>Welcome & quick icebreaker </li>
-    <li>Concept introduction & intuition </li>
-    <li>Pseudocode walk-through + dry run on whiteboard </li>
-    <li>Code implementations & live demo </li>
-    <li>MCQ quiz + recap</li>
-    <li>Q&A and next steps </li>
-  </ol>
-</div>
-
-<!-- Learning outcomes -->
-<div class="card" id="outcomes">
-  <h3>Learning Outcomes</h3>
-  <ul>
-    <li>Understand the algorithm's idea and when to use it.</li>
-    <li>Read and follow pseudocode and dry-run examples.</li>
-    <li>Implement the algorithm quickly in your preferred language.</li>
-    <li>Spot basic complexity and possible optimisations.</li>
-  </ul>
-</div>
-
-<!-- Pre-work -->
-<div class="card" id="prework">
-  <h3>Pre-work (Optional)</h3>
-  <p class="small">Please bring a laptop with a code editor or open browser console. If possible, paste the code snippets shared in the 'Materials' section into your editor before the meeting.</p>
-</div>
-
-<!-- Pseudocode & dry run -->
-<div class="card">
-  <h3>Pseudocode — (Simple example: "Mini Insertion Sort" for small arrays)</h3>
-  
-  <p class="small">We'll do a whiteboard-style dry run on the sample array and annotate each swap step live.</p>
-</div>
-
-<!-- Code samples in multiple languages -->
-<div id="materials" class="card">
-  <h3>Code — Implementations</h3>
-
-  <h4>Python</h4>
-  <pre class="code">
-def mini_insertion_sort(arr):
-    for i in range(1, len(arr)):
-        key = arr[i]
-        j = i - 1
-        while j >= 0 and arr[j] > key:
-            arr[j+1] = arr[j]
-            j -= 1
-        arr[j+1] = key
-    return arr
-
-# Example:
-print(mini_insertion_sort([5,2,7,3]))
-  </pre>
-
-   
-   
-   
-  <p class="small">You can copy-paste any snippet and run it during the live demo. We'll run the JS in the browser console for immediate visual feedback.</p>
-</div>
-
-<!-- Complexity -->
-<div class="card">
-  <h3>Complexity & Notes</h3>
-  <ul>
-    <li>Time complexity: <strong>O(n²)</strong> worst-case, <strong>O(n)</strong> best-case (already sorted).</li>
-    <li>Space complexity: <strong>O(1)</strong> (in-place).</li>
-    <li>Good for: small arrays, almost-sorted data, teaching/learning steps.</li>
-  </ul>
-</div>
-
-<!-- Live demo instructions -->
-<div class="card">
-  <h3>Live Demo</h3>
-  <p class="small">During the Zoom we'll open the JS console and demonstrate the snippet. If you want to follow along locally, open your browser console (F12 → Console) and paste the JS snippet from above.</p>
-  <p class="small">If time permits, we'll show a tiny visualisation (bars) and animate the swaps — simple and clean.</p>
-</div>
-
-<!-- MCQ Quiz (interactive) -->
-<div class="card">
-  <h3>Lightning Quiz — 5 MCQs</h3>
-  <div id="mcq-area" class="mcq">
-    <div id="q1" class="q">
-      <p><strong>1.</strong> Best-case time complexity of insertion sort?</p>
-      <label><input type="radio" name="q1" value="a"> O(n²)</label><br>
-      <label><input type="radio" name="q1" value="b"> O(n)</label><br>
-      <label><input type="radio" name="q1" value="c"> O(log n)</label><br>
-    </div>
-
-    <div id="q2" class="q">
-      <p><strong>2.</strong> Is insertion sort stable?</p>
-      <label><input type="radio" name="q2" value="a"> Yes</label><br>
-      <label><input type="radio" name="q2" value="b"> No</label><br>
-    </div>
-
-    <div id="q3" class="q">
-      <p><strong>3.</strong> Space complexity of insertion sort (in-place)?</p>
-      <label><input type="radio" name="q3" value="a"> O(n)</label><br>
-      <label><input type="radio" name="q3" value="b"> O(1)</label><br>
-    </div>
-
-    <div id="q4" class="q">
-      <p><strong>4.</strong> Which input suits insertion sort best?</p>
-      <label><input type="radio" name="q4" value="a"> Large random arrays</label><br>
-      <label><input type="radio" name="q4" value="b"> Small or nearly-sorted arrays</label><br>
-    </div>
-
-    <div id="q5" class="q">
-      <p><strong>5.</strong> In the pseudocode we moved elements to the right. That is an example of:</p>
-      <label><input type="radio" name="q5" value="a"> Swapping adjacent elements only</label><br>
-      <label><input type="radio" name="q5" value="b"> Shifting elements to make space</label><br>
-    </div>
-
-    <button class="btn" onclick="scoreMCQ()">Check Answers</button>
-    <div id="mcq-result" class="small" style="margin-top:10px;"></div>
-  </div>
-</div>
-
-<!-- Simple MCQ JS -->
-<script>
-  function scoreMCQ(){
-    const answers = { q1: 'b', q2: 'a', q3: 'b', q4: 'b', q5: 'b' };
-    let score = 0;
-    for (let k in answers){
-      const els = document.getElementsByName(k);
-      let chosen = null;
-      for (let i=0;i<els.length;i++){
-        if (els[i].checked) { chosen = els[i].value; break; }
-      }
-      if (chosen === answers[k]) score++;
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Photos — KashiFrame Studios (Animated, Smooth)</title>
+  <link rel="stylesheet" href="https://varanasi-software-junction.github.io/blogger/blogger-assets/crx_styles_v1.css">
+  <style>
+    :root {
+      --saffron: #b7410e;
+      --bg: #fff;
+      --muted: #666;
+      --row-gap: 180px;
+      --caption-bg: rgba(0, 0, 0, 0.6);
+      --tile-ease: cubic-bezier(.16, .84, .3, 1);
+      --tile-duration: 700ms;
+      --stagger: 60ms;
+      --expander-duration: 1100ms;
     }
-    const result = document.getElementById('mcq-result');
-    result.innerHTML = 'You scored: <strong>' + score + '</strong> / 5. ';
-    if (score === 5) result.innerHTML += 'Excellent! ✅';
-    else if (score >= 3) result.innerHTML += 'Nice work — good understanding. 👍';
-    else result.innerHTML += 'No worries — we will cover this during the lesson. 🙌';
-  }
-</script>
 
-<!-- Footer / Next steps -->
-<div class="card">
-  <h3>Next Steps & Resources</h3>
-  <ul>
-    <li>Repo & code bundle: <em>We will share a Google Drive / GitHub link during the Zoom</em>.</li>
-    <li>Recording: <em>Will be available within 24 hours after the session.</em></li>
-    <li>Homework: Implement a visualiser or convert the code to another language you prefer.</li>
-  </ul>
-</div>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+      color: #222;
+      background: var(--bg);
+      scroll-behavior: smooth
+    }
 
-<!-- Bottom action row and WhatsApp button -->
-<div class="action-row" style="margin-top:12px;">
-  <a class="btn" href="https://us04web.zoom.us/j/4428355179?pwd=yCZrJtx41cUAxDyApDM9eSrre1GSXe.1" target="_blank" rel="noopener">Join Zoom Lesson</a>
-  <a class="btn btn-outline" href="https://wa.me/919335874326" target="_blank" rel="noopener">Contact on WhatsApp</a>
-  <a class="btn" href="#mcq-area">Take Quiz</a>
-</div>
+    header {
+      background: linear-gradient(135deg, #ffecd2, #fcb69f);
+      padding: 18px 16px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05)
+    }
 
-<a class="whatsapp-float" href="https://wa.me/9335874326" target="_blank" rel="noopener" title="Contact on WhatsApp">
-  <img src="https://www.freepnglogos.com/uploads/whatsapp-logo-light-green-png-0.png" alt="WhatsApp" style="width:56px;height:56px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.12);">
-</a>
+    .container {
+      max-width: 1300px;
+      margin: 24px auto;
+      padding: 0 16px
+    }
 
-<!-- small credits -->
-<p class="small" style="margin-top:18px">Prepared by <strong>Champak Roy</strong> — Programmer's Picnic series. If you'd like this template tweaked for a different algorithm or level, tell me which one and I'll update it.</p>
+    .back {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: var(--saffron);
+      text-decoration: none
+    }
 
+    h1 {
+      margin: 6px 0 8px
+    }
+
+    main.container {
+      scroll-snap-type: y mandatory;
+      scroll-padding-top: 24px
+    }
+
+    .gallery-section {
+      position: relative;
+      scroll-snap-align: start;
+      margin-bottom: var(--row-gap);
+      padding: 80px 0
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+      justify-content: center;
+      transition: box-shadow 520ms var(--tile-ease);
+      transform-origin: center top;
+      z-index: 10;
+      position: relative;
+      will-change: transform
+    }
+
+    /* Tile base */
+    .tile {
+      flex: 1 1 240px;
+      min-width: 220px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #f6f6f6;
+      position: relative;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+      transform-origin: center;
+      will-change: transform, filter, opacity
+    }
+
+    .tile img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform calc(var(--tile-duration)) var(--tile-ease), filter 420ms ease, opacity 300ms ease
+    }
+
+    /* meta */
+    .tile .meta {
+      position: absolute;
+      left: 8px;
+      bottom: 8px;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.35));
+      color: #fff;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      backdrop-filter: blur(4px)
+    }
+
+    /* Hover: lift + soft glint (smooth) */
+    .tile:hover {
+      transform: translateY(-8px) scale(1.015);
+      box-shadow: 0 28px 48px rgba(0, 0, 0, 0.16)
+    }
+
+    .tile:hover img {
+      transform: scale(1.06)
+    }
+
+    /* 3D pointer tilt (subtle) */
+    .tile.tilt {
+      transition: box-shadow 220ms linear;
+    }
+
+    /* Entrance: fade/slide + stagger using CSS variable delay */
+    .tile {
+      opacity: 0;
+      transform: translateY(18px) scale(0.995);
+      transition: transform calc(var(--tile-duration)) var(--tile-ease), opacity 420ms ease;
+    }
+
+    .tile.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .tile.visible img {
+      transform: translateZ(0)
+    }
+
+    /* use CSS custom property for per-tile delay */
+    .tile {
+      transition-delay: var(--delay, 0s)
+    }
+
+    /* Active row sticky rise with gentle animation */
+    .row.active {
+      position: -webkit-sticky;
+      position: sticky;
+      top: 40px;
+      z-index: 60
+    }
+
+    .row.active .tile {
+      transform: translateY(-6vh) scale(1.015);
+      transition: transform 700ms var(--tile-ease)
+    }
+
+    /* caption */
+    .row-caption {
+      position: fixed;
+      top: 20px;
+      right: 28px;
+      background: var(--caption-bg);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+      opacity: 0;
+      transform: translateY(-8px) scale(0.99);
+      transition: opacity 420ms ease, transform 420ms var(--tile-ease);
+      pointer-events: none;
+      z-index: 200;
+      max-width: 46%;
+      backdrop-filter: blur(6px)
+    }
+
+    .row-caption.show {
+      opacity: 1;
+      transform: translateY(0) scale(1)
+    }
+
+    .row-caption .sub {
+      display: block;
+      font-size: 0.85rem;
+      opacity: 0.95;
+      font-weight: 400;
+      margin-top: 4px
+    }
+
+    /* Expander background: shorter duration, crossfade + subtle parallax */
+    .expander {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 40;
+      display: block;
+      overflow: hidden
+    }
+
+    .expander .layer {
+      position: absolute;
+      inset: -8%;
+      background-position: center;
+      background-size: cover;
+      transform-origin: center;
+      transition: transform var(--expander-duration) var(--tile-ease), opacity calc(var(--expander-duration)) ease-in-out, filter calc(var(--expander-duration)) var(--tile-ease);
+      will-change: transform, opacity, filter;
+      opacity: 0;
+      filter: blur(0px) saturate(1)
+    }
+
+    .expander .layer.base {
+      z-index: 1;
+      opacity: 0.95
+    }
+
+    .expander .layer.blur {
+      z-index: 2;
+      filter: blur(14px) saturate(120%);
+      opacity: 0.55;
+      transform: scale(1.04)
+    }
+
+    .expander .layer.glaze {
+      z-index: 3;
+      background-blend-mode: overlay;
+      opacity: 0.22;
+      transform: scale(1.08);
+      background-color: rgba(183, 65, 14, 0.14)
+    }
+
+    .expander.show .layer.base {
+      transform: translateY(-2.4vh) scale(1.015);
+      opacity: 1
+    }
+
+    .expander.show .layer.blur {
+      transform: translateY(-4.8vh) scale(1.08);
+      opacity: 0.85
+    }
+
+    .expander.show .layer.glaze {
+      transform: translateY(-7.2vh) scale(1.12);
+      opacity: 0.42
+    }
+
+    /* small screens tweaks */
+    @media(max-width:980px) {
+      .row {
+        flex-wrap: wrap
+      }
+
+      .tile {
+        flex: 1 1 calc(50% - 12px)
+      }
+
+      .row-caption {
+        right: 16px;
+        left: 16px;
+        bottom: 18px;
+        top: auto;
+        text-align: center;
+        max-width: unset
+      }
+    }
+
+    @media(max-width:520px) {
+      .tile {
+        flex: 1 1 100%
+      }
+
+      .row.active {
+        position: relative;
+        transform: none;
+        top: auto
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .expander .layer,
+      .row,
+      .tile img,
+      .row-caption,
+      .tile,
+      .tile.visible {
+        transition: none !important;
+        animation: none !important;
+        transform: none !important;
+      }
+    }
+
+    footer {
+      margin-top: 80px;
+      padding: 18px;
+      text-align: center;
+      color: var(--muted)
+    }
+
+    /* loading placeholder */
+    .placeholder {
+      background: linear-gradient(90deg, #eee #f6f6f6 #eee);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s linear infinite
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0
+      }
+
+      100% {
+        background-position: -200% 0
+      }
+    }
+
+    /* accessible focus style */
+    .tile:focus-within {
+      outline: 3px solid rgba(183, 65, 14, 0.12);
+      outline-offset: 6px
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="container">
+      <a class="back" href="index.html">← Back to Home</a>
+      <h1>Photo Albums</h1>
+      <p style="max-width:820px">Scroll — rows elegantly lift and tiles gently animate into view.</p>
+    </div>
+  </header>
+
+  <main class="container" id="main">
+    <div id="gallery">
+      <!-- rows (kept simple; images referenced from local pics/ folder) -->
+      <section class="gallery-section" data-caption="Ghats & Morning Life">
+        <div class="row">
+          <figure class="tile" tabindex="0"><img src="pics/0.jpg" alt="Ghats — Sunrise" loading="lazy">
+            <figcaption class="meta">Ghats — Sunrise</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/1.jpg" alt="Wedding — Varanasi" loading="lazy">
+            <figcaption class="meta">Wedding — Varanasi</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/2.jpg" alt="Aerial — Old City" loading="lazy">
+            <figcaption class="meta">Aerial — Old City</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/me.jpg" alt="Street — Market" loading="lazy">
+            <figcaption class="meta">Street — Market</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="gallery-section" data-caption="Weddings & Rituals">
+        <div class="row">
+          <figure class="tile" tabindex="0"><img src="pics/1.jpg" alt="Bride — Ghats" loading="lazy">
+            <figcaption class="meta">Bride — Ghats</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/2.jpg" alt="Aerial — Sunset" loading="lazy">
+            <figcaption class="meta">Aerial — Sunset</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/me.jpg" alt="Street — Art" loading="lazy">
+            <figcaption class="meta">Street — Art</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/0.jpg" alt="Ghats — Twilight" loading="lazy">
+            <figcaption class="meta">Ghats — Twilight</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="gallery-section" data-caption="Aerial & Cityscapes">
+        <div class="row">
+          <figure class="tile" tabindex="0"><img src="pics/2.jpg" alt="Aerial — Over Ghats" loading="lazy">
+            <figcaption class="meta">Aerial — Over Ghats</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/1.jpg" alt="Wedding — Lamps" loading="lazy">
+            <figcaption class="meta">Wedding — Lamps</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/me.jpg" alt="Street — Vendors" loading="lazy">
+            <figcaption class="meta">Street — Vendors</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/0.jpg" alt="Ghats — Reflections" loading="lazy">
+            <figcaption class="meta">Ghats — Reflections</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="gallery-section" data-caption="The Golden Evening">
+        <div class="row">
+          <figure class="tile" tabindex="0"><img src="pics/0.jpg" alt="Ghats — Evening Glow" loading="lazy">
+            <figcaption class="meta">Ghats — Evening Glow</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/2.jpg" alt="Aerial — City Lights" loading="lazy">
+            <figcaption class="meta">Aerial — City Lights</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/me.jpg" alt="Street — People" loading="lazy">
+            <figcaption class="meta">Street — People</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/1.jpg" alt="Wedding — Ceremony" loading="lazy">
+            <figcaption class="meta">Wedding — Ceremony</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="gallery-section" data-caption="Riverside Moments">
+        <div class="row">
+          <figure class="tile" tabindex="0"><img src="pics/1.jpg" alt="Ritual — Lamps" loading="lazy">
+            <figcaption class="meta">Ritual — Lamps</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/0.jpg" alt="Boats — Morning" loading="lazy">
+            <figcaption class="meta">Boats — Morning</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/2.jpg" alt="Sunset — Silhouette" loading="lazy">
+            <figcaption class="meta">Sunset — Silhouette</figcaption>
+          </figure>
+          <figure class="tile" tabindex="0"><img src="pics/me.jpg" alt="Market — Colors" loading="lazy">
+            <figcaption class="meta">Market — Colors</figcaption>
+          </figure>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <p>Want a custom album or prints? <a href="contact.html">Contact us</a> for pricing and delivery.</p>
+    </footer>
+  </main>
+
+  <div id="row-caption" class="row-caption" aria-live="polite" role="status" aria-atomic="true"></div>
+  <div id="expander-root" class="expander" aria-hidden="true"></div>
+
+  <script>
+    (function () {
+      const sections = Array.from(document.querySelectorAll('.gallery-section'));
+      const rows = Array.from(document.querySelectorAll('.row'));
+      const tiles = Array.from(document.querySelectorAll('.tile'));
+      const expanderRoot = document.getElementById('expander-root');
+      const rowCaption = document.getElementById('row-caption');
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function randomEffect() {
+        const arr = ['effect-slide', 'effect-rotate', 'effect-fade'];
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+      function captionForSection(sec) {
+        return sec.getAttribute('data-caption') || (sec.querySelector('.meta') ? sec.querySelector('.meta').textContent.trim() : 'Gallery');
+      }
+
+      function createExpanderForImage(src) {
+        // Crossfade: reuse existing layers if same src to avoid flicker
+        const current = expanderRoot.querySelector('.layer.base');
+        if (current && current.style.backgroundImage.indexOf(src) !== -1) return;
+
+        expanderRoot.innerHTML = '';
+        const base = document.createElement('div'); base.className = 'layer base'; base.style.backgroundImage = `url("${src}")`;
+        const blur = document.createElement('div'); blur.className = 'layer blur'; blur.style.backgroundImage = `url("${src}")`;
+        const glaze = document.createElement('div'); glaze.className = 'layer glaze'; glaze.style.backgroundImage = `url("${src}")`;
+        expanderRoot.append(base, blur, glaze);
+        // ensure styles apply then show
+        requestAnimationFrame(() => expanderRoot.classList.add('show'));
+      }
+      function removeExpander() {
+        expanderRoot.classList.remove('show');
+        setTimeout(() => { expanderRoot.innerHTML = ''; }, 900);
+      }
+
+      // Tile reveal observer with smooth stagger via CSS variable
+      const tileObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          const tile = entry.target;
+          const img = tile.querySelector('img');
+          if (!img) return;
+          if (entry.isIntersecting && entry.intersectionRatio > 0.28) {
+            const siblings = Array.from(tile.parentElement.querySelectorAll('.tile'));
+            const idx = siblings.indexOf(tile);
+            // set a CSS var for delay, keep it small for smooth cascade
+            tile.style.setProperty('--delay', `${idx * 0.06}s`);
+            tile.classList.add('visible');
+
+            // update expander image when tile is more central
+            const rect = tile.getBoundingClientRect();
+            const centerY = rect.top + rect.height / 2;
+            if (centerY > window.innerHeight * 0.2 && centerY < window.innerHeight * 0.8) {
+              const src = img.src;
+              createExpanderForImage(src);
+            }
+          } else {
+            // hide expander only when none near center
+            const still = tiles.some(t => {
+              const r = t.getBoundingClientRect();
+              const cy = r.top + r.height / 2;
+              return cy > (window.innerHeight * 0.2) && cy < (window.innerHeight * 0.8);
+            });
+            if (!still) removeExpander();
+          }
+        });
+      }, { threshold: [0.2, 0.35, 0.6] });
+      tiles.forEach(t => tileObserver.observe(t));
+
+      // Row observer to pick the most visible section; keep animations gentle
+      const rowObserver = new IntersectionObserver((entries) => {
+        const visible = entries.filter(e => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        rows.forEach(r => r.classList.remove('active', 'effect-slide', 'effect-rotate', 'effect-fade'));
+        if (visible.length > 0) {
+          const bestSection = visible[0].target;
+          const row = bestSection.querySelector('.row');
+          row.classList.add('active');
+          if (!prefersReduced) row.classList.add(randomEffect());
+          const text = captionForSection(bestSection);
+          const count = bestSection.querySelectorAll('.tile').length;
+          rowCaption.textContent = text + ' ';
+          const sub = document.createElement('span'); sub.className = 'sub'; sub.textContent = `${count} photos`;
+          rowCaption.appendChild(sub);
+          rowCaption.classList.add('show');
+        } else {
+          rowCaption.classList.remove('show');
+        }
+      }, { root: null, rootMargin: '0px', threshold: [0.35, 0.55, 0.8] });
+      sections.forEach(s => rowObserver.observe(s));
+
+      rows.forEach(r => { r.addEventListener('animationend', () => { r.classList.remove('effect-slide', 'effect-rotate', 'effect-fade'); }); });
+
+      // Smooth pointer tilt using lerp and requestAnimationFrame
+      function attachTilt(tile) {
+        if (prefersReduced) return;
+        tile.classList.add('tilt');
+        let rect = null;
+        let targetX = 0, targetY = 0;
+        let currentX = 0, currentY = 0;
+        let rafId = null;
+
+        function update() {
+          // lerp towards target
+          currentX += (targetX - currentX) * 0.16;
+          currentY += (targetY - currentY) * 0.16;
+          const rotateY = currentX; // degrees
+          const rotateX = currentY; // degrees
+          tile.style.transform = `perspective(900px) translateZ(0) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.015)`;
+          rafId = requestAnimationFrame(update);
+        }
+
+        tile.addEventListener('pointermove', (e) => {
+          rect = rect || tile.getBoundingClientRect();
+          const px = (e.clientX - rect.left) / rect.width; // 0..1
+          const py = (e.clientY - rect.top) / rect.height; // 0..1
+          // smaller angles for smoother motion
+          targetX = (0.5 - py) * 5; // rotateX
+          targetY = (px - 0.5) * 6; // rotateY
+          if (!rafId) update();
+        });
+        tile.addEventListener('pointerleave', () => {
+          // ease back to 0
+          targetX = 0; targetY = 0;
+        });
+        // gentle press feedback
+        tile.addEventListener('pointerdown', () => { tile.style.transition = 'transform 160ms var(--tile-ease)'; tile.style.transform += ' scale(0.995)'; });
+        tile.addEventListener('pointerup', () => { tile.style.transition = ''; });
+
+        // stop RAF when tile removed or not needed (cleanup not critical here)
+      }
+      tiles.forEach(t => attachTilt(t));
+
+      // respect reduced-motion changes
+      const mm = window.matchMedia('(prefers-reduced-motion: reduce)');
+      mm.addEventListener('change', () => {
+        if (mm.matches) { rows.forEach(r => r.classList.remove('effect-slide', 'effect-rotate', 'effect-fade')); }
+      });
+
+      // keyboard focus -> reveal tile
+      tiles.forEach(tile => tile.addEventListener('focus', () => { tile.style.setProperty('--delay', '0s'); tile.classList.add('visible'); }));
+
+      // make sure image flicker is avoided on initial load
+      window.addEventListener('load', () => { tiles.forEach((t, i) => { if (t.getBoundingClientRect().top < window.innerHeight) t.classList.add('visible'); }); });
+
+    })();
+  </script>
 </body>
+
 </html>
