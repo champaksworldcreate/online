@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Advanced Whiteboard — Fixed</title>
+<title>Advanced Whiteboard — Eraser Cursor Added</title>
 <style>
   :root{
     --bg:#eef3ff; --panel:#fff; --accent:#3f6bff; --muted:#8b9cff;
@@ -58,6 +58,33 @@
   /* selection rectangle */
   .sel-rect { position:fixed; border:1px dashed rgba(0,0,0,0.25); background: rgba(63,107,255,0.06); pointer-events:none; z-index:20000; display:none; }
 
+  /* eraser cursor & label (visible in viewport, follows pointer) */
+  #eraserCursor {
+    position:fixed;
+    pointer-events:none;
+    border:2px dashed rgba(0,0,0,0.35);
+    background: rgba(255,255,255,0.06);
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    z-index:10030;
+    display:none;
+    box-sizing:border-box;
+    mix-blend-mode:normal;
+  }
+  #eraserSizeLabel {
+    position:fixed;
+    pointer-events:none;
+    z-index:10031;
+    transform:translate(-50%,-120%);
+    background:rgba(20,30,60,0.9);
+    color:white;
+    font-size:12px;
+    padding:4px 6px;
+    border-radius:6px;
+    display:none;
+    white-space:nowrap;
+  }
+
   /* bottom-right guide (fixed) */
   .guide { position:fixed; right:12px; bottom:12px; width:320px; background:#fff; border-radius:12px; box-shadow:0 14px 40px rgba(31,41,55,0.12); z-index:10020; padding:0; border:1px solid rgba(63,107,255,0.12); font-size:13px; }
   .guide .head{ display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid rgba(0,0,0,0.04); }
@@ -111,7 +138,7 @@
       <label class="small">Color</label>
       <input id="penColor" type="color" value="#000000">
       <label class="small">Size</label>
-      <input id="penSize" type="range" min="1" max="80" value="6">
+      <input id="penSize" type="range" min="1" max="80" value="18">
       <label class="small">Opacity</label>
       <input id="penOpacity" type="range" min="0.1" max="1" step="0.05" value="1">
     </div>
@@ -168,7 +195,7 @@
       <h4>Pan & Draw</h4>
       <ul>
         <li>Hold the <b>Space</b> key and drag background to pan the canvas (objects & drawing move together).</li>
-        <li>Pick drawing tool (Pen / Highlighter / Eraser) then draw with pointer.</li>
+        <li>Pick drawing tool (Pen / Highlighter / Eraser) then draw with pointer. Eraser size updates live and you can see cursor.</li>
       </ul>
 
       <h4>Export / Import</h4>
@@ -178,16 +205,17 @@
 
   <button id="helpBtn">?</button>
   <div id="selRect" class="sel-rect"></div>
+
+  <!-- ERASER CURSOR & LABEL -->
+  <div id="eraserCursor" aria-hidden="true"></div>
+  <div id="eraserSizeLabel" aria-hidden="true"></div>
 </div>
 
 <script>
-/* Fixed advanced whiteboard
-   - Multi-select & selection rectangle
-   - Proper drag/resize/rotate math (world coordinates)
-   - Eraser works on drawing layer
-   - Duplicate (Ctrl/Cmd+D) for all selected
-   - Clear All (objects + drawing)
-   - Guide with restore via localStorage
+/* Whiteboard with visible eraser cursor
+   - Cursor shows dashed circle matching erase radius (size * scale)
+   - Label shows numeric size
+   - Cursor follows pointer inside viewport when Eraser tool active
 */
 
 /* --------------------
@@ -222,6 +250,9 @@ const guide = document.getElementById('guide');
 const collapseGuide = document.getElementById('collapseGuide');
 const closeGuide = document.getElementById('closeGuide');
 
+const eraserCursor = document.getElementById('eraserCursor');
+const eraserSizeLabel = document.getElementById('eraserSizeLabel');
+
 let worldW = 2400, worldH = 1600;
 function resizeWorld(){
   const vw = viewport.clientWidth, vh = viewport.clientHeight;
@@ -235,21 +266,17 @@ function resizeWorld(){
   drawingCanvas.height = worldH;
   drawingCanvas.style.width = worldW + 'px';
   drawingCanvas.style.height = worldH + 'px';
-  // preserve existing bitmap drawn to canvas remains (we do not scale it here)
 }
 window.addEventListener('resize', resizeWorld);
 resizeWorld();
 
-/* transform (pan + scale) */
-let pan = { x: 0, y: 0 };
+/* pan + scale */
+let pan = { x:0, y:0 };
 let scale = 1;
-function applyTransform(){
-  world.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${scale})`;
-  // objectsLayer & drawing are inside world so transform applies to them automatically
-}
+function applyTransform(){ world.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${scale})`; }
 applyTransform();
 
-/* helpers page <-> world coordinates */
+/* page <-> world coordinates */
 function pageToWorld(clientX, clientY){
   const r = viewport.getBoundingClientRect();
   const x = (clientX - r.left - pan.x) / scale;
@@ -261,7 +288,7 @@ function worldToPage(wx, wy){
   return { x: r.left + pan.x + wx*scale, y: r.top + pan.y + wy*scale };
 }
 
-/* snapping helpers */
+/* snapping */
 function snapValue(v){
   if(!snapToggle.checked) return v;
   const g = parseInt(gridSizeSelect.value,10) || 12;
@@ -274,8 +301,7 @@ function snapAngle(a){
 }
 
 /* --------------------
-   Drawing tools (pen/highlighter/eraser)
-   Drawing coordinates are in world space and drawn directly into the canvas bitmap.
+   Drawing tools
    -------------------- */
 let drawMode = 'pen'; // 'pen'|'highlighter'|'eraser'|'select'
 function setActiveTool(t){
@@ -285,6 +311,8 @@ function setActiveTool(t){
   if(t==='highlighter') highlighterToolBtn.classList.add('active');
   if(t==='eraser') eraserToolBtn.classList.add('active');
   if(t==='select') selectToolBtn.classList.add('active');
+  // update eraser cursor visibility immediately
+  updateEraserCursorVisibility();
 }
 penToolBtn.addEventListener('click', ()=> setActiveTool('pen'));
 highlighterToolBtn.addEventListener('click', ()=> setActiveTool('highlighter'));
@@ -293,7 +321,6 @@ selectToolBtn.addEventListener('click', ()=> setActiveTool('select'));
 
 let isDrawing = false;
 let lastPoint = null;
-
 function startDrawAt(worldPt){
   isDrawing = true;
   lastPoint = worldPt;
@@ -301,6 +328,8 @@ function startDrawAt(worldPt){
   ctx.lineJoin = 'round';
   ctx.beginPath();
   ctx.moveTo(worldPt.x, worldPt.y);
+  // hide cursor while actively erasing so it doesn't cover pointer; comment out if you want always visible
+  if(drawMode === 'eraser') hideEraserCursorTemporarily();
 }
 function continueDrawTo(worldPt){
   if(!isDrawing || !lastPoint) return;
@@ -334,32 +363,102 @@ function continueDrawTo(worldPt){
   }
   lastPoint = worldPt;
 }
-function endDraw(){ isDrawing = false; lastPoint = null; }
+function endDraw(){ isDrawing = false; lastPoint = null; showEraserCursorIfNeeded(); }
 
 /* --------------------
-   Pan & pointer behavior
+   Eraser cursor logic
+   -------------------- */
+let eraserVisible = false;
+let eraserHiddenTemporarily = false;
+let lastPointerInViewport = false;
+
+function updateEraserCursorVisibility(){
+  if(drawMode === 'eraser' && lastPointerInViewport && !eraserHiddenTemporarily){
+    eraserCursor.style.display = 'block';
+    eraserSizeLabel.style.display = 'block';
+    eraserVisible = true;
+    // also make default cursor none to avoid double pointer
+    viewport.style.cursor = 'none';
+  } else {
+    eraserCursor.style.display = 'none';
+    eraserSizeLabel.style.display = 'none';
+    eraserVisible = false;
+    viewport.style.cursor = 'default';
+  }
+}
+function hideEraserCursorTemporarily(){
+  eraserHiddenTemporarily = true;
+  eraserCursor.style.display = 'none';
+  eraserSizeLabel.style.display = 'none';
+}
+function showEraserCursorIfNeeded(){
+  eraserHiddenTemporarily = false;
+  updateEraserCursorVisibility();
+}
+
+/* place and size eraser cursor given page coords and pen size (world units) */
+function positionEraserCursor(pageX, pageY){
+  // compute display radius in page pixels: erase radius (world units) * scale
+  const sizeWorld = Number(penSize.value) || 10;
+  const displaySize = Math.max(6, sizeWorld * scale);
+  eraserCursor.style.width = displaySize + 'px';
+  eraserCursor.style.height = displaySize + 'px';
+  eraserCursor.style.left = pageX + 'px';
+  eraserCursor.style.top = pageY + 'px';
+  eraserCursor.style.borderRadius = (displaySize/2) + 'px';
+  // label text
+  eraserSizeLabel.textContent = `${sizeWorld}px`;
+  // position label slightly above cursor (avoid going out of viewport)
+  const labelOffsetY = 12 + displaySize/2;
+  eraserSizeLabel.style.left = pageX + 'px';
+  eraserSizeLabel.style.top = (pageY - labelOffsetY) + 'px';
+}
+
+/* pointer tracking for cursor: follow pointer when inside viewport */
+viewport.addEventListener('pointerenter', (ev)=>{ lastPointerInViewport = true; updateEraserCursorVisibility(); });
+viewport.addEventListener('pointerleave', (ev)=>{ lastPointerInViewport = false; updateEraserCursorVisibility(); });
+
+window.addEventListener('pointermove', (ev)=>{
+  // update eraser cursor position if active
+  if(eraserVisible || (drawMode === 'eraser' && lastPointerInViewport)){
+    // page coords are ev.clientX/Y
+    positionEraserCursor(ev.clientX, ev.clientY);
+  }
+});
+
+/* ensure cursor updates when size slider changes or scale changes */
+penSize.addEventListener('input', (ev)=> {
+  if(eraserVisible) {
+    const pageCenterX = window.event ? window.event.clientX : (viewport.getBoundingClientRect().left + viewport.clientWidth/2);
+    const pageCenterY = window.event ? window.event.clientY : (viewport.getBoundingClientRect().top + viewport.clientHeight/2);
+    positionEraserCursor(pageCenterX, pageCenterY);
+  }
+});
+
+/* if pan/zoom changes, update display size for cursor at last known pointer position */
+function refreshEraserCursorOnTransform(){
+  // if cursor currently visible, try to center at last known pointer (we don't store last pointer globally except mousemove)
+  // nothing necessary here because pointermove will set size at next move; call positionEraserCursor with last stored coords if you saved them.
+}
+
+/* --------------------
+   Pan & pointer behavior (drawing & pan & selection rect)
    -------------------- */
 let spaceDown = false;
 let panning = false, panStart = null, savedPan = null;
-
-/* selection rectangle (multi-select) state */
-let selecting = false;
-let selStart = null;
+let selecting = false, selStart = null;
 
 viewport.addEventListener('pointerdown', (ev)=>{
   viewport.focus();
-  // pan by holding space
+  // pan if space held
   if(spaceDown){
     panning = true; panStart = { x: ev.clientX, y: ev.clientY }; savedPan = { x: pan.x, y: pan.y }; viewport.style.cursor = 'grabbing'; ev.preventDefault(); return;
   }
-  // if select tool and clicked empty area -> start selection rectangle
+  // select rect when in select mode and clicked empty
   if(drawMode === 'select' && (ev.target === viewport || ev.target === world || ev.target === drawingCanvas)){
-    selecting = true;
-    selStart = { x: ev.clientX, y: ev.clientY };
-    selRect.style.left = selStart.x + 'px'; selRect.style.top = selStart.y + 'px';
-    selRect.style.width = '0px'; selRect.style.height = '0px'; selRect.style.display = 'block';
-    ev.preventDefault();
-    return;
+    selecting = true; selStart = { x: ev.clientX, y: ev.clientY };
+    selRect.style.left = selStart.x + 'px'; selRect.style.top = selStart.y + 'px'; selRect.style.width = '0px'; selRect.style.height = '0px'; selRect.style.display = 'block';
+    ev.preventDefault(); return;
   }
   // drawing tools
   if(drawMode === 'pen' || drawMode === 'highlighter' || drawMode === 'eraser'){
@@ -374,6 +473,7 @@ window.addEventListener('pointermove', (ev)=>{
     pan.x = savedPan.x + (ev.clientX - panStart.x);
     pan.y = savedPan.y + (ev.clientY - panStart.y);
     applyTransform();
+    refreshEraserCursorOnTransform();
     return;
   }
   if(selecting && selStart){
@@ -386,53 +486,35 @@ window.addEventListener('pointermove', (ev)=>{
     const wpt = pageToWorld(ev.clientX, ev.clientY);
     continueDrawTo(wpt);
   }
+  // update eraser cursor even when not drawing (so it follows pointer)
+  if(drawMode === 'eraser' && lastPointerInViewport && !eraserHiddenTemporarily){
+    positionEraserCursor(ev.clientX, ev.clientY);
+  }
 });
-
 window.addEventListener('pointerup', (ev)=>{
   if(panning){ panning = false; viewport.style.cursor = 'default'; return; }
   if(selecting){ finalizeSelectionRect(); selecting = false; selRect.style.display = 'none'; selStart = null; return; }
   if(isDrawing){ endDraw(); }
 });
 
-/* keyboard shortcuts */
-window.addEventListener('keydown', (ev)=>{
-  if(ev.code === 'Space'){ spaceDown = true; viewport.style.cursor='grab'; ev.preventDefault(); }
-  if((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase()==='d'){ duplicateSelected(); ev.preventDefault(); }
-  if(ev.key === 'Delete' || ev.key === 'Backspace'){ deleteSelected(); ev.preventDefault(); }
-});
+/* keyboard */
+window.addEventListener('keydown', (ev)=>{ if(ev.code === 'Space'){ spaceDown = true; viewport.style.cursor='grab'; ev.preventDefault(); } if((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase()==='d'){ duplicateSelected(); ev.preventDefault(); } if(ev.key === 'Delete' || ev.key === 'Backspace'){ deleteSelected(); ev.preventDefault(); } });
 window.addEventListener('keyup', (ev)=>{ if(ev.code === 'Space'){ spaceDown = false; viewport.style.cursor='default'; } });
 
+viewport.addEventListener('pointerenter', ()=>{ lastPointerInViewport = true; updateEraserCursorVisibility(); });
+viewport.addEventListener('pointerleave', ()=>{ lastPointerInViewport = false; updateEraserCursorVisibility(); });
+
 /* --------------------
-   Objects: multi-select, create, transform
+   Objects management (multi-select, create, transform)
    -------------------- */
-let selectedSet = new Set();
-let selectionOrder = []; // maintain order for duplication
-let objectCounter = 1, zCounter = 1;
+let selectedSet = new Set(), selectionOrder = [], objectCounter = 1, zCounter = 1;
 
-function addToSelection(el){
-  if(!el) return;
-  if(!selectedSet.has(el)){ selectedSet.add(el); selectionOrder.push(el); el.classList.add('selected'); }
-}
-function removeFromSelection(el){
-  if(!el) return;
-  if(selectedSet.has(el)){ selectedSet.delete(el); selectionOrder = selectionOrder.filter(x=>x!==el); el.classList.remove('selected'); }
-}
-function clearSelection(){
-  for(const el of Array.from(selectedSet)) el.classList.remove('selected');
-  selectedSet.clear(); selectionOrder = [];
-}
+function addToSelection(el){ if(!el) return; if(!selectedSet.has(el)){ selectedSet.add(el); selectionOrder.push(el); el.classList.add('selected'); } }
+function removeFromSelection(el){ if(!el) return; if(selectedSet.has(el)){ selectedSet.delete(el); selectionOrder = selectionOrder.filter(x=>x!==el); el.classList.remove('selected'); } }
+function clearSelection(){ for(const e of Array.from(selectedSet)) e.classList.remove('selected'); selectedSet.clear(); selectionOrder = []; }
 function getSelectionArray(){ return Array.from(selectionOrder); }
+function selectObjectSingle(el, append=false){ if(append){ if(selectedSet.has(el)) removeFromSelection(el); else addToSelection(el); } else { clearSelection(); if(el) addToSelection(el); } }
 
-function selectObjectSingle(el, append=false){
-  if(append){
-    if(selectedSet.has(el)) removeFromSelection(el); else addToSelection(el);
-  } else {
-    clearSelection();
-    if(el) addToSelection(el);
-  }
-}
-
-/* create object */
 function createObject({ x=120, y=80, w=220, h=120, type='rect', html='' } = {}){
   const el = document.createElement('div');
   el.className = 'obj ' + (type==='circle' ? 'circle' : type==='text' ? 'text' : 'rect');
@@ -441,21 +523,17 @@ function createObject({ x=120, y=80, w=220, h=120, type='rect', html='' } = {}){
   el.style.width = w + 'px'; el.style.height = h + 'px';
   el.style.transform = 'rotate(0deg)'; el.style.zIndex = ++zCounter;
   el.dataset.angle = '0';
-
   const content = document.createElement('div'); content.className = 'content'; content.innerHTML = html || (type==='text' ? 'Double-click to edit' : '');
   el.appendChild(content);
-
   const rotateHandle = document.createElement('div'); rotateHandle.className = 'handle rotate'; el.appendChild(rotateHandle);
   const resizeHandle = document.createElement('div'); resizeHandle.className = 'handle resize'; el.appendChild(resizeHandle);
-
   makeInteractiveObject(el, rotateHandle, resizeHandle);
-
   objectsLayer.appendChild(el);
   selectObjectSingle(el);
   return el;
 }
 
-/* selection rectangle finalizer — picks objects intersecting rectangle */
+/* selection rectangle finalization */
 function finalizeSelectionRect(){
   if(!selRect) return;
   const rectPage = selRect.getBoundingClientRect();
@@ -467,7 +545,6 @@ function finalizeSelectionRect(){
     bottom: (rectPage.bottom - vpRect.top - pan.y) / scale
   };
   const els = Array.from(objectsLayer.children).filter(e=>e.classList && e.classList.contains('obj'));
-  // Shift key: add to selection; otherwise replace
   const append = (window.event && window.event.shiftKey) || false;
   if(!append) clearSelection();
   for(const el of els){
@@ -478,28 +555,21 @@ function finalizeSelectionRect(){
   }
 }
 
-/* make object interactive: drag/resize/rotate + selection behaviors */
+/* interactive object behaviors (drag/resize/rotate) */
 function makeInteractiveObject(el, rotateHandle, resizeHandle){
-  // drag (supports group movement)
   let dragging=false, dragStart=null, groupOrig=null;
   el.addEventListener('pointerdown', (ev)=>{
     if(ev.button && ev.button !== 0) return;
     if(ev.target === rotateHandle || ev.target === resizeHandle) return;
     ev.stopPropagation();
-    // determine selection: shift toggles membership
-    if(ev.shiftKey) selectObjectSingle(el, true);
-    else if(!selectedSet.has(el)) selectObjectSingle(el, false);
+    if(ev.shiftKey) selectObjectSingle(el, true); else if(!selectedSet.has(el)) selectObjectSingle(el, false);
     el.setPointerCapture && el.setPointerCapture(ev.pointerId);
-    dragging = true;
-    dragStart = { x: ev.clientX, y: ev.clientY };
-    // record origins for all selected to support group move
-    groupOrig = getSelectionArray().map(o => ({ el:o, left: parseFloat(o.style.left), top: parseFloat(o.style.top) }));
+    dragging = true; dragStart = { x: ev.clientX, y: ev.clientY };
+    groupOrig = getSelectionArray().map(o=>({ el:o, left: parseFloat(o.style.left), top: parseFloat(o.style.top) }));
   });
   window.addEventListener('pointermove', (ev)=>{
     if(!dragging) return;
-    const dxpx = ev.clientX - dragStart.x;
-    const dypx = ev.clientY - dragStart.y;
-    // convert pixel movement to world movement (divide by scale)
+    const dxpx = ev.clientX - dragStart.x, dypx = ev.clientY - dragStart.y;
     const dx = dxpx / scale, dy = dypx / scale;
     for(const o of groupOrig){
       let nx = o.left + dx, ny = o.top + dy;
@@ -507,91 +577,25 @@ function makeInteractiveObject(el, rotateHandle, resizeHandle){
       o.el.style.left = nx + 'px'; o.el.style.top = ny + 'px';
     }
   });
-  window.addEventListener('pointerup', (ev)=>{
-    if(!dragging) return;
-    dragging = false;
-    el.releasePointerCapture && el.releasePointerCapture(ev.pointerId);
-  });
+  window.addEventListener('pointerup', (ev)=>{ if(!dragging) return; dragging=false; el.releasePointerCapture && el.releasePointerCapture(ev.pointerId); });
 
-  // resize (single target)
+  // resize
   let resizing=false, rStart=null, rOrig=null;
-  resizeHandle.addEventListener('pointerdown', (ev)=>{
-    ev.stopPropagation();
-    el.setPointerCapture && el.setPointerCapture(ev.pointerId);
-    resizing = true;
-    rStart = { x: ev.clientX, y: ev.clientY };
-    rOrig = { w: el.offsetWidth, h: el.offsetHeight };
-    // ensure single selection (we resize the clicked element)
-    if(!selectedSet.has(el)){ clearSelection(); addToSelection(el); }
-  });
-  window.addEventListener('pointermove', (ev)=>{
-    if(!resizing) return;
-    const dxpx = ev.clientX - rStart.x;
-    const dypx = ev.clientY - rStart.y;
-    const dx = dxpx / scale, dy = dypx / scale;
-    let nw = Math.max(20, rOrig.w + dx), nh = Math.max(12, rOrig.h + dy);
-    if(snapToggle.checked){ nw = snapValue(nw); nh = snapValue(nh); }
-    el.style.width = nw + 'px'; el.style.height = nh + 'px';
-  });
-  window.addEventListener('pointerup', (ev)=>{
-    if(!resizing) return;
-    resizing = false;
-    resizeHandle.releasePointerCapture && resizeHandle.releasePointerCapture(ev.pointerId);
-  });
+  resizeHandle.addEventListener('pointerdown', (ev)=>{ ev.stopPropagation(); el.setPointerCapture && el.setPointerCapture(ev.pointerId); resizing=true; rStart={x:ev.clientX,y:ev.clientY}; rOrig={w:el.offsetWidth,h:el.offsetHeight}; if(!selectedSet.has(el)){ clearSelection(); addToSelection(el); } });
+  window.addEventListener('pointermove', (ev)=>{ if(!resizing) return; const dxpx = ev.clientX - rStart.x, dypx = ev.clientY - rStart.y; const dx=dxpx/scale, dy=dypx/scale; let nw=Math.max(20,rOrig.w+dx), nh=Math.max(12,rOrig.h+dy); if(snapToggle.checked){ nw=snapValue(nw); nh=snapValue(nh); } el.style.width = nw + 'px'; el.style.height = nh + 'px'; });
+  window.addEventListener('pointerup', (ev)=>{ if(!resizing) return; resizing=false; resizeHandle.releasePointerCapture && resizeHandle.releasePointerCapture(ev.pointerId); });
 
-  // rotate (single target) — store startAngle + startPointerAngle for stable rotation
-  let rotating=false, rotateStartPointerAngle=0, rotateStartAngle=0, rotateCenter = null;
-  rotateHandle.addEventListener('pointerdown', (ev)=>{
-    ev.stopPropagation();
-    el.setPointerCapture && el.setPointerCapture(ev.pointerId);
-    rotating = true;
-    // center in page coords for angle calc
-    const rect = el.getBoundingClientRect();
-    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
-    rotateCenter = pageToWorld(cx, cy);
-    // starting angles
-    rotateStartAngle = parseFloat(el.dataset.angle || '0');
-    // compute pointer start angle relative to center
-    const p = pageToWorld(ev.clientX, ev.clientY);
-    rotateStartPointerAngle = Math.atan2(p.y - rotateCenter.y, p.x - rotateCenter.x) * 180 / Math.PI;
-    // ensure single selection
-    if(!selectedSet.has(el)){ clearSelection(); addToSelection(el); }
-  });
-  window.addEventListener('pointermove', (ev)=>{
-    if(!rotating) return;
-    const p = pageToWorld(ev.clientX, ev.clientY);
-    const pointerAngle = Math.atan2(p.y - rotateCenter.y, p.x - rotateCenter.x) * 180 / Math.PI;
-    let delta = pointerAngle - rotateStartPointerAngle;
-    // new angle is startAngle + delta + 90 to align handle orientation
-    let newAngle = rotateStartAngle + delta + 90;
-    if(snapToggle.checked) newAngle = snapAngle(newAngle);
-    el.style.transform = `rotate(${newAngle}deg)`;
-    el.dataset.angle = String(newAngle);
-  });
-  window.addEventListener('pointerup', (ev)=>{
-    if(!rotating) return;
-    rotating = false;
-    rotateHandle.releasePointerCapture && rotateHandle.releasePointerCapture(ev.pointerId);
-  });
+  // rotate
+  let rotating=false, rotateStartPointerAngle=0, rotateStartAngle=0, rotateCenter=null;
+  rotateHandle.addEventListener('pointerdown', (ev)=>{ ev.stopPropagation(); el.setPointerCapture && el.setPointerCapture(ev.pointerId); rotating=true; const rect=el.getBoundingClientRect(); const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2; rotateCenter = pageToWorld(cx, cy); rotateStartAngle = parseFloat(el.dataset.angle || '0'); const p = pageToWorld(ev.clientX, ev.clientY); rotateStartPointerAngle = Math.atan2(p.y-rotateCenter.y, p.x-rotateCenter.x) * 180 / Math.PI; if(!selectedSet.has(el)){ clearSelection(); addToSelection(el); } });
+  window.addEventListener('pointermove', (ev)=>{ if(!rotating) return; const p = pageToWorld(ev.clientX, ev.clientY); const pointerAngle = Math.atan2(p.y-rotateCenter.y, p.x-rotateCenter.x) * 180 / Math.PI; let delta = pointerAngle - rotateStartPointerAngle; let newAngle = rotateStartAngle + delta + 90; if(snapToggle.checked) newAngle = snapAngle(newAngle); el.style.transform = `rotate(${newAngle}deg)`; el.dataset.angle = String(newAngle); });
+  window.addEventListener('pointerup', (ev)=>{ if(!rotating) return; rotating=false; rotateHandle.releasePointerCapture && rotateHandle.releasePointerCapture(ev.pointerId); });
 
-  // double-click to edit text
-  el.addEventListener('dblclick', (ev)=>{
-    if(el.classList.contains('text')){
-      const c = el.querySelector('.content');
-      c.contentEditable = true; c.focus();
-      c.addEventListener('blur', ()=> c.contentEditable = false, { once:true });
-    }
-  });
-
-  // click selects (shift toggles)
-  el.addEventListener('click', (ev)=>{
-    ev.stopPropagation();
-    const append = ev.shiftKey;
-    selectObjectSingle(el, append);
-  });
+  el.addEventListener('dblclick', (ev)=>{ if(el.classList.contains('text')){ const c = el.querySelector('.content'); c.contentEditable = true; c.focus(); c.addEventListener('blur', ()=> c.contentEditable = false, { once:true }); } });
+  el.addEventListener('click', (ev)=>{ ev.stopPropagation(); const append = ev.shiftKey; selectObjectSingle(el, append); });
 }
 
-/* duplicates and deletes for set-based selection */
+/* duplication & deletion for selection set */
 function duplicateSelected(){
   const sel = getSelectionArray();
   if(sel.length === 0) return;
@@ -600,13 +604,11 @@ function duplicateSelected(){
     const clone = el.cloneNode(true);
     clone.dataset.objId = 'obj' + (objectCounter++);
     const left = parseFloat(el.style.left || 0) + 20;
-    const top  = parseFloat(el.style.top  || 0) + 20;
+    const top  = parseFloat(el.style.top || 0) + 20;
     clone.style.left = left + 'px'; clone.style.top = top + 'px';
     clone.style.zIndex = ++zCounter;
-    // re-hook handles
     const rotateHandle = clone.querySelector('.handle.rotate') || (() => { const d=document.createElement('div'); d.className='handle rotate'; return d; })();
     const resizeHandle = clone.querySelector('.handle.resize') || (() => { const d=document.createElement('div'); d.className='handle resize'; return d; })();
-    // ensure they exist inside clone
     if(!clone.querySelector('.handle.rotate')) clone.appendChild(rotateHandle);
     if(!clone.querySelector('.handle.resize')) clone.appendChild(resizeHandle);
     makeInteractiveObject(clone, rotateHandle, resizeHandle);
@@ -623,38 +625,21 @@ function deleteSelected(){
 
 /* clicking empty area deselects */
 viewport.addEventListener('pointerdown', (ev)=>{
-  if(ev.target === viewport || ev.target === world || ev.target === drawingCanvas) {
-    // handled in top-level pointerdown; here ensure deselect if clicking empty and not selecting/panning
-    if(!spaceDown && drawMode === 'select'){
-      // allow selection rectangle instead — do nothing
-    } else if(drawMode !== 'pen' && drawMode !== 'highlighter' && drawMode !== 'eraser'){
-      clearSelection();
-    }
+  if(ev.target === viewport || ev.target === world || ev.target === drawingCanvas){
+    if(drawMode !== 'pen' && drawMode !== 'highlighter' && drawMode !== 'eraser') clearSelection();
   }
 });
 
-/* --------------------
-   Toolbar wiring
-   -------------------- */
+/* toolbar wiring */
 document.getElementById('addRect').addEventListener('click', ()=> createObject({ type:'rect' }));
 document.getElementById('addCircle').addEventListener('click', ()=> createObject({ type:'circle', w:140, h:140 }));
 document.getElementById('addText').addEventListener('click', ()=> createObject({ type:'text', w:220, h:80, html:'Double-click to edit' }));
-document.getElementById('addImage').addEventListener('click', ()=>{
-  const url = prompt('Image URL (direct)');
-  if(!url) return;
-  createObject({ type:'rect', w:260, h:160, html:`<img src="${url.replace(/"/g,'')}" alt="">` });
-});
+document.getElementById('addImage').addEventListener('click', ()=>{ const url = prompt('Image URL (direct)'); if(!url) return; createObject({ type:'rect', w:260, h:160, html:`<img src="${url.replace(/"/g,'')}" alt="">` }); });
 document.getElementById('dupBtn').addEventListener('click', ()=> duplicateSelected());
-document.getElementById('clearAll').addEventListener('click', ()=> {
-  if(confirm('Remove all objects and drawings?')){
-    objectsLayer.innerHTML = '';
-    ctx.clearRect(0,0,drawingCanvas.width,drawingCanvas.height);
-    clearSelection();
-  }
-});
+document.getElementById('clearAll').addEventListener('click', ()=> { if(confirm('Remove all objects and drawings?')){ objectsLayer.innerHTML=''; ctx.clearRect(0,0,drawingCanvas.width,drawingCanvas.height); clearSelection(); } });
 
 /* export/import JSON */
-exportJSONBtn.addEventListener('click', ()=>{
+exportJSONBtn.addEventListener('click', ()=> {
   const out = [];
   for(const el of objectsLayer.children){
     if(!el.classList || !el.classList.contains('obj')) continue;
@@ -700,20 +685,7 @@ toggleGridBtn.addEventListener('click', ()=> {
   if(on) world.classList.add('grid'); else world.classList.remove('grid');
 });
 
-/* duplicate & delete keys and small bindings */
-window.addEventListener('keydown', (ev)=>{
-  // Duplicate already handled above; ensure we also check when selection exists
-  if((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'd'){ duplicateSelected(); ev.preventDefault(); }
-  if(ev.key === 'Delete' || ev.key === 'Backspace'){ deleteSelected(); ev.preventDefault(); }
-});
-
-/* --------------------
-   Selection rectangle: clicking Shift + drag adds to selection (handled) - finalized earlier
-   -------------------- */
-
-/* --------------------
-   Guide restore/hide
-   -------------------- */
+/* guide state */
 const GUIDE_KEY = 'wb_guide_state_v3_fixed';
 let guideState = { open:true };
 try{ const s = localStorage.getItem(GUIDE_KEY); if(s) guideState = JSON.parse(s); }catch(e){}
@@ -723,21 +695,34 @@ collapseGuide.addEventListener('click', ()=>{ guideState.open = !guideState.open
 closeGuide.addEventListener('click', ()=>{ guideState.open = false; localStorage.setItem(GUIDE_KEY, JSON.stringify(guideState)); applyGuide(); });
 helpBtn.addEventListener('click', ()=>{ guideState.open = true; localStorage.setItem(GUIDE_KEY, JSON.stringify(guideState)); applyGuide(); });
 
-/* --------------------
-   Initialize demo objects & final ui wiring
-   -------------------- */
+/* init demo */
 createObject({ x:80, y:60, w:260, h:150, type:'rect' });
 createObject({ x:420, y:120, w:160, h:160, type:'circle' });
 createObject({ x:120, y:320, w:260, h:110, type:'text', html:'Double-click to edit' });
 resizeWorld();
 
-/* Keep grid size variable updated */
-gridSizeSelect.addEventListener('change', ()=> {/* snapping uses select value dynamically */});
-snapToggle.addEventListener('change', ()=> {/* snapValue checks checkbox */});
+/* keyboard duplicate/delete binding ensured above */
+window.addEventListener('keydown', (ev)=>{
+  if((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'd'){ duplicateSelected(); ev.preventDefault(); }
+  if(ev.key === 'Delete' || ev.key === 'Backspace'){ deleteSelected(); ev.preventDefault(); }
+});
 
-/* Good-to-have: prevent touch scrolling while drawing in viewport */
-document.body.addEventListener('touchstart', (e)=>{ if(e.target === drawingCanvas || e.target.closest('.world')) e.preventDefault(); }, { passive:false });
-document.body.addEventListener('touchmove', (e)=>{ if(e.target === drawingCanvas || e.target.closest('.world')) e.preventDefault(); }, { passive:false });
+/* ensure eraser cursor visibility updates when tool changes */
+function updateEraserCursorOnToolChange(){
+  updateEraserCursorVisibility();
+}
+setActiveTool('pen'); // initial
+// update when user toggles tool via buttons (setActiveTool does updateEraserCursorVisibility already)
+
+/* ensure eraser cursor updates when scale/pan change (e.g., after zoom/pan) */
+function onTransformChange(){
+  // recompute visual size by calling positionEraserCursor at last known mouse position if available
+  // nothing required here; pointermove will update on next movement
+}
+
+/* prevent touch scrolling while interacting with world */
+document.body.addEventListener('touchstart', (e)=>{ if(e.target.closest('.world')) e.preventDefault(); }, { passive:false });
+document.body.addEventListener('touchmove', (e)=>{ if(e.target.closest('.world')) e.preventDefault(); }, { passive:false });
 
 </script>
 </body>
