@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head><title>Remote Webcam Viewer</title></head>
+<body>
+  <textarea id="offer" placeholder="Paste offer code here"></textarea>
+  <textarea id="answer" placeholder="Answer code will appear here"></textarea>
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay playsinline muted></video>
+  <button id="connect">Connect</button>
+
+  <script>
+    let pc = new RTCPeerConnection();
+
+    // Show remote stream
+    pc.ontrack = event => {
+      document.getElementById('remoteVideo').srcObject = event.streams[0];
+    };
+
+    document.getElementById('connect').onclick = async () => {
+      // 1. Start local webcam
+      let stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      document.getElementById('localVideo').srcObject = stream;
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      // 2. Apply remote offer
+      let offer = JSON.parse(document.getElementById('offer').value);
+      await pc.setRemoteDescription(offer);
+
+      // 3. Create and show answer
+      let answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      document.getElementById('answer').value = JSON.stringify(answer);
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head><title>Local Webcam Share</title></head>
+<body>
+  <video id="localVideo" autoplay playsinline></video>
+  <textarea id="offer" placeholder="Offer code will appear here"></textarea>
+  <textarea id="answer" placeholder="Paste answer code here"></textarea>
+  <button id="start">Start Camera</button>
+  <button id="applyAnswer">Apply Answer</button>
+
+  <script>
+    let pc = new RTCPeerConnection();
+
+    document.getElementById('start').onclick = async () => {
+      let stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      document.getElementById('localVideo').srcObject = stream;
+      stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+      let offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      document.getElementById('offer').value = JSON.stringify(offer);
+    };
+
+    document.getElementById('applyAnswer').onclick = async () => {
+      let answer = JSON.parse(document.getElementById('answer').value);
+      await pc.setRemoteDescription(answer);
+    };
+  </script>
+</body>
+</html>

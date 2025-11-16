@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML5 Webcam Example</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        #videoElement {
+            width: 640px;
+            height: 480px;
+            background-color: #333;
+            border: 2px solid #555;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Live Webcam Stream</h1>
+    <video id="videoElement" autoplay>
+    </video>
+    <div>
+        <button onclick="startCam()">Start Webcam</button>
+        <button onclick="stopCam()">Stop Webcam</button>
+    </div>
+
+    <script>
+        const video = document.getElementById('videoElement');
+        let currentStream; // To store the current media stream
+
+        function startCam() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function (stream) {
+                        currentStream = stream; // Store the stream
+                        video.srcObject = stream;
+                        video.play();
+                    })
+                    .catch(function (error) {
+                        console.error("Error accessing webcam: ", error);
+                        alert("Could not access webcam. Please ensure you have a webcam connected and grant permissions.");
+                    });
+            } else {
+                alert("getUserMedia is not supported by your browser.");
+            }
+        }
+
+        function stopCam() {
+            if (currentStream) {
+                const tracks = currentStream.getTracks();
+                tracks.forEach(function (track) {
+                    track.stop(); // Stop each track in the stream
+                });
+                video.srcObject = null; // Disconnect the video element from the stream
+                currentStream = null; // Clear the stored stream
+            }
+        }
+
+        // Optional: Automatically start webcam when the page loads
+        // window.onload = startCam;
+    </script>
+</body>
+
+</html>
