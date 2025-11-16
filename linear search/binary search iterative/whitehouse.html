@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Whiteboard — Objects layer demo</title>
+<style>
+  :root{
+    --bg:#eef3ff; --panel:#fff; --accent:#3f6bff;
+  }
+  body{margin:0;font-family:system-ui,Arial;background:var(--bg);height:100vh;display:flex;flex-direction:column}
+  .toolbar{display:flex;gap:8px;padding:10px;background:linear-gradient(180deg,#fff, #f7fbff);align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+  .toolbar button{padding:6px 10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:white;cursor:pointer}
+  .stage{
+    flex:1;
+    margin:12px;
+    border:3px solid var(--accent);
+    border-radius:12px;
+    background:white;
+    position:relative;
+    overflow:hidden;
+    min-height:300px;
+  }
+
+  /* objects layer — holds DOM objects */
+  .objects-layer{
+    position:absolute; inset:0; pointer-events:auto;
+  }
+
+  /* example object base styles */
+  .obj {
+    position:absolute;
+    box-sizing:border-box;
+    touch-action:none;
+    user-select:none;
+  }
+  .obj .content{
+    width:100%; height:100%; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  /* shape presets */
+  .obj.rect{ background: rgba(63,107,255,0.08); border:2px solid rgba(63,107,255,0.28); border-radius:6px; }
+  .obj.circle{ background: rgba(255,200,60,0.12); border:2px solid rgba(255,180,0,0.28); border-radius:999px; }
+  .obj.text{ background: rgba(255,255,255,0.0); border:1px dashed rgba(0,0,0,0.06); padding:6px 8px; font-size:16px; color:#111; }
+  .obj img{ display:block; width:100%; height:100%; object-fit:cover; border-radius:6px; }
+
+  /* selected outline */
+  .obj.selected{ box-shadow: 0 6px 18px rgba(16,24,40,0.12); outline: 2px solid rgba(63,107,255,0.14); }
+
+  /* resize handle */
+  .handle{
+    position:absolute; width:12px; height:12px; background:white; border:2px solid rgba(0,0,0,0.12); border-radius:3px; box-sizing:border-box;
+  }
+  .handle.br{ right:-8px; bottom:-8px; cursor:se-resize; }
+  .handle.tl{ left:-8px; top:-8px; cursor:nw-resize; }
+  .handle.tr{ right:-8px; top:-8px; cursor:ne-resize; }
+  .handle.bl{ left:-8px; bottom:-8px; cursor:sw-resize; }
+
+  /* small status area */
+  .status{position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,0.06); padding:6px 8px; border-radius:8px; font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="toolbar" role="toolbar" aria-label="object toolbar">
+  <button id="addRect">Add rectangle</button>
+  <button id="addCircle">Add circle</button>
+  <button id="addText">Add text</button>
+  <button id="addImage">Add image (URL)</button>
+  <button id="bringFront">Bring forward</button>
+  <button id="sendBack">Send backward</button>
+  <button id="export">Export JSON</button>
+  <button id="import">Import JSON</button>
+  <input id="importFile" type="file" accept="application/json" style="display:none"/>
+  <button id="clearObjs">Clear objects</button>
+  <div style="flex:1"></div>
+  <div style="font-size:13px;color:#555">Tip: Drag objects, resize with corner handle, press Delete to remove</div>
+</div>
+
+<div class="stage" id="stage">
+  <!-- objects layer -->
+  <div class="objects-layer" id="objectsLayer" ></div>
+  <div class="status" id="status">0 objects</div>
+</div>
+
+<script>
+/*
+  Objects-in-div whiteboard demo
+  - Each object is a DOM element placed inside #objectsLayer (absolute coords)
+  - Supports create, drag, resize, select, delete, z-order, export/import
+*/
+
+const objectsLayer = document.getElementById('objectsLayer');
+const statusEl = document.getElementById('status');
+
+let zCounter = 1;
+function updateStatus(){ statusEl.textContent = objectsLayer.children.length + ' objects'; }
+
+// Utility: create a new object element with common structure
+function createObject({x=50,y=50,w=180,h=120,cls='rect', html='' }){
+  const el = document.createElement('div');
+  el.className = 'obj ' + cls;
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  el.style.width = w + 'px';
+  el.style.height = h + 'px';
+  el.style.zIndex = ++zCounter;
+  el.dataset.type = cls;
+
+  const content = document.createElement('div');
+  content.className = 'content';
+  content.innerHTML = html || '';
+  el.appendChild(content);
+
+  // add resize handle (bottom-right)
+  const handle = document.createElement('div');
+  handle.className = 'handle br';
+  el.appendChild(handle);
+
+  // attach behaviors
+  makeInteractive(el, handle);
+  objectsLayer.appendChild(el);
+  selectObject(el);
+  updateStatus();
+  return el;
+}
+
+// Make element draggable, resizable and selectable
+let selected = null;
+
+function selectObject(el){
+  if(selected) selected.classList.remove('selected');
+  selected = el;
+  if(el) el.classList.add('selected');
+}
+
+// remove object
+function removeObject(el){
+  if(!el) return;
+  if(el === selected) selected = null;
+  el.remove();
+  updateStatus();
+}
+
+// Bring forward / send backward
+function bringForward(){
+  if(!selected) return;
+  selected.style.zIndex = ++zCounter;
+}
+function sendBackward(){
+  if(!selected) return;
+  // set to lowest visible
+  selected.style.zIndex = 1;
+}
+
+// Make interactive: pointer dragging and resize handle logic
+function makeInteractive(el, handle){
+  // Pointer drag on element (but avoid when starting on handle)
+  let dragging=false, dragStart=null, orig=null;
+
+  el.addEventListener('pointerdown', (ev)=>{
+    // only left button
+    if(ev.button && ev.button !== 0) return;
+    // if clicking handle, don't start move
+    if(ev.target === handle) return;
+    ev.stopPropagation();
+    el.setPointerCapture && el.setPointerCapture(ev.pointerId);
+    dragging = true;
+    dragStart = {x: ev.clientX, y: ev.clientY};
+    orig = {left: parseFloat(el.style.left), top: parseFloat(el.style.top)};
+    selectObject(el);
+  });
+
+  window.addEventListener('pointermove', (ev) => {
+    if(!dragging) return;
+    const dx = ev.clientX - dragStart.x;
+    const dy = ev.clientY - dragStart.y;
+    el.style.left = (orig.left + dx) + 'px';
+    el.style.top  = (orig.top  + dy) + 'px';
+  });
+
+  window.addEventListener('pointerup', (ev) => {
+    if(!dragging) return;
+    dragging = false;
+    el.releasePointerCapture && el.releasePointerCapture(ev.pointerId);
+  });
+
+  // Resize via handle (br)
+  let resizing=false, rStart=null, rOrig=null;
+  handle.addEventListener('pointerdown', (ev)=>{
+    ev.stopPropagation();
+    resizing = true;
+    rStart = {x: ev.clientX, y: ev.clientY};
+    rOrig = {w: el.offsetWidth, h: el.offsetHeight};
+    handle.setPointerCapture && handle.setPointerCapture(ev.pointerId);
+    selectObject(el);
+  });
+  window.addEventListener('pointermove', (ev)=>{
+    if(!resizing) return;
+    const dx = ev.clientX - rStart.x;
+    const dy = ev.clientY - rStart.y;
+    el.style.width = Math.max(30, rOrig.w + dx) + 'px';
+    el.style.height = Math.max(20, rOrig.h + dy) + 'px';
+  });
+  window.addEventListener('pointerup', (ev)=>{
+    if(!resizing) return;
+    resizing = false;
+    handle.releasePointerCapture && handle.releasePointerCapture(ev.pointerId);
+  });
+
+  // double click text editing
+  if(el.classList.contains('text')){
+    el.addEventListener('dblclick', ()=> {
+      const content = el.querySelector('.content');
+      content.contentEditable = true;
+      content.focus();
+      // stop being editable on blur
+      content.addEventListener('blur', ()=> content.contentEditable = false, {once:true});
+    });
+  }
+
+  // click selects
+  el.addEventListener('click', (e)=> { e.stopPropagation(); selectObject(el); });
+
+  // keyboard delete when selected (global handler)
+}
+
+// toolbar actions
+document.getElementById('addRect').addEventListener('click', ()=> createObject({cls:'rect'}));
+document.getElementById('addCircle').addEventListener('click', ()=> createObject({cls:'circle', w:140, h:140}));
+document.getElementById('addText').addEventListener('click', ()=> createObject({cls:'text', w:200, h:60, html:'Click to edit'}));
+document.getElementById('addImage').addEventListener('click', async ()=>{
+  const url = prompt('Image URL (paste a direct image link)');
+  if(!url) return;
+  const el = createObject({cls:'rect', w:220, h:140, html:`<img src="${escapeHtml(url)}" alt="img">`});
+  // allow the image to load and fill
+});
+
+// z-order buttons
+document.getElementById('bringFront').addEventListener('click', bringForward);
+document.getElementById('sendBack').addEventListener('click', sendBackward);
+
+// export/import
+document.getElementById('export').addEventListener('click', ()=>{
+  const out = [];
+  for(const el of objectsLayer.children){
+    if(!el.classList.contains('obj')) continue;
+    const type = el.dataset.type;
+    out.push({
+      type,
+      left: parseFloat(el.style.left || 0),
+      top: parseFloat(el.style.top || 0),
+      width: parseFloat(el.style.width || el.offsetWidth),
+      height: parseFloat(el.style.height || el.offsetHeight),
+      html: el.querySelector('.content').innerHTML,
+      z: parseInt(el.style.zIndex || 0, 10)
+    });
+  }
+  const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'objects.json'; document.body.appendChild(a); a.click(); a.remove();
+});
+
+document.getElementById('import').addEventListener('click', ()=> document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', (ev)=>{
+  const f = ev.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      // clear existing
+      objectsLayer.innerHTML = '';
+      zCounter = 1;
+      for(const item of data){
+        const el = createObject({
+          x: item.left, y: item.top, w: item.width, h: item.height, cls: item.type, html: item.html || ''
+        });
+        if(item.z) el.style.zIndex = item.z;
+      }
+      updateStatus();
+    }catch(err){ alert('Invalid file: '+ err.message); }
+  };
+  reader.readAsText(f);
+  ev.target.value = '';
+});
+
+// clear
+document.getElementById('clearObjs').addEventListener('click', ()=> {
+  if(confirm('Remove all objects?')) { objectsLayer.innerHTML = ''; selected = null; updateStatus(); }
+});
+
+// stage click deselects
+document.getElementById('stage').addEventListener('click', ()=> selectObject(null));
+
+// delete key
+window.addEventListener('keydown', (ev)=>{
+  if(ev.key === 'Delete' || ev.key === 'Backspace'){
+    if(selected){ removeObject(selected); }
+  }
+  if((ev.ctrlKey || ev.metaKey) && ev.key === 'a'){ // ctrl/cmd+a: select all not implemented, just example
+    // optional
+  }
+});
+
+// small escape helper
+function escapeHtml(s){ return s.replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+// Init demo with two objects
+createObject({x:40,y:40,w:220,h:130,cls:'rect'});
+createObject({x:300,y:90,w:180,h:180,cls:'circle'});
+createObject({x:80,y:240,w:260,h:90,cls:'text', html:'Double click to edit text'});
+updateStatus();
+
+</script>
+</body>
+</html>
