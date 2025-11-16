@@ -3,445 +3,793 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Whiteboard — Objects layer + Guide Restore</title>
+<title>Advanced Whiteboard — Objects + Drawing + Pan + Grid + Rotate</title>
 <style>
   :root{
     --bg:#eef3ff; --panel:#fff; --accent:#3f6bff; --muted:#8b9cff;
+    --toolbar-h:56px;
   }
-  body{margin:0;font-family:system-ui,Arial;background:var(--bg);height:100vh;display:flex;flex-direction:column}
-  .toolbar{display:flex;gap:8px;padding:10px;background:linear-gradient(180deg,#fff,#f7fbff);align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
-  .toolbar button{padding:6px 10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:white;cursor:pointer}
-  .toolbar input[type="file"]{display:none}
-  .stage{
+  html,body{height:100%;margin:0;font-family:system-ui,Arial,Helvetica,sans-serif;background:var(--bg);color:#0b2545}
+  .app {
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* Top toolbar */
+  .toolbar {
+    height:var(--toolbar-h);
+    display:flex;
+    gap:8px;
+    align-items:center;
+    padding:8px;
+    background:linear-gradient(180deg,#fff,#f5f9ff);
+    border-bottom:1px solid rgba(0,0,0,0.04);
+    flex-shrink:0;
+  }
+  .toolbar .group { display:flex; gap:8px; align-items:center; }
+  .toolbar button, .toolbar input[type="color"], .toolbar input[type="range"], .toolbar select {
+    background:white;border:1px solid rgba(0,0,0,0.06); padding:8px 10px; border-radius:8px; cursor:pointer;
+    font-size:13px;
+  }
+  .toolbar .spacer { flex:1; }
+
+  /* Layout area */
+  .layout {
+    display:flex;
     flex:1;
-    margin:12px;
-    border:3px solid var(--accent);
-    border-radius:12px;
-    background:white;
-    position:relative;
-    overflow:hidden;
-    min-height:320px;
+    gap:12px;
+    padding:12px;
+    box-sizing:border-box;
   }
 
-  .objects-layer{position:absolute; inset:0; pointer-events:auto;}
+  /* Left tools column (drawing tools) */
+  .leftcol {
+    width:88px;
+    min-width:72px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:center;
+  }
+  .toolbtn { width:64px; text-align:center; padding:8px; border-radius:8px; background:white; border:1px solid rgba(0,0,0,0.06); cursor:pointer; font-size:13px; }
+  .toolbtn.active { box-shadow:0 6px 18px rgba(63,107,255,0.12); border-color:var(--accent); }
 
+  /* Stage wrapper (with pan transform applied) */
+  .stage-viewport {
+    flex:1;
+    border-radius:12px;
+    background:linear-gradient(180deg,#ffffff,#fbfdff);
+    border:3px solid var(--accent);
+    overflow:hidden;
+    position:relative;
+    min-height:300px;
+  }
+
+  /* world is the infinite canvas (large) — we keep it big but pan via transform */
+  .world {
+    position:absolute; left:0; top:0;
+    width:3000px; height:2000px;
+    transform-origin:0 0;
+    will-change:transform;
+    background-image: linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px), linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+    background-size: 20px 20px, 20px 20px;
+  }
+  /* Hide grid initially (we toggle via class) */
+  .world.nogrid { background-image: none; }
+
+  /* objects layer sits inside world */
+  .objects-layer { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:auto; }
+
+  /* drawing canvas overlays objects (we keep it in world coordinates too) */
+  canvas.draw-layer { position:absolute; left:0; top:0; width:100%; height:100%; display:block; }
+
+  /* object styles */
   .obj {
     position:absolute;
     box-sizing:border-box;
+    transform-origin:center center;
     touch-action:none;
     user-select:none;
     transition: box-shadow .12s ease;
   }
-  .obj .content{
-    width:100%; height:100%; overflow:hidden;
-    display:flex; align-items:center; justify-content:center;
-  }
-
-  .obj.rect{ background: rgba(63,107,255,0.06); border:2px solid rgba(63,107,255,0.18); border-radius:6px; }
+  .obj .content { width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .obj.rect{ background: rgba(63,107,255,0.06); border:2px solid rgba(63,107,255,0.18); border-radius:8px; }
   .obj.circle{ background: rgba(255,200,60,0.10); border:2px solid rgba(255,180,0,0.22); border-radius:999px; }
-  .obj.text{ background: rgba(255,255,255,0.0); border:1px dashed rgba(0,0,0,0.06); padding:6px 8px; font-size:16px; color:#111; }
-  .obj img{ display:block; width:100%; height:100%; object-fit:cover; border-radius:6px; }
+  .obj.text{ background:transparent; border:1px dashed rgba(0,0,0,0.06); padding:6px 8px; font-size:16px; }
+  .obj img{ width:100%; height:100%; object-fit:cover; display:block; border-radius:6px; }
 
-  .obj.selected{ box-shadow:0 8px 28px rgba(16,24,40,0.12); outline:2px solid rgba(63,107,255,0.12); }
+  .obj.selected{ box-shadow:0 12px 30px rgba(16,24,40,0.12); outline:2px solid rgba(63,107,255,0.10); }
 
-  .handle{
-    position:absolute; width:12px; height:12px; background:white; border:2px solid rgba(0,0,0,0.12); border-radius:3px;
-  }
-  .handle.br{right:-8px; bottom:-8px; cursor:se-resize;}
+  /* handles: rotate top-center and resize bottom-right */
+  .handle { position:absolute; width:12px; height:12px; background:white; border:2px solid rgba(0,0,0,0.12); border-radius:3px; box-sizing:border-box; z-index:40; }
+  .handle.rotate { top:-20px; left:50%; transform:translateX(-50%); cursor:grab; }
+  .handle.resize { right:-10px; bottom:-10px; cursor:se-resize; }
 
-  .status{position:absolute; left:12px; bottom:12px; background:rgba(0,0,0,0.06); padding:6px 8px; border-radius:8px; font-size:13px}
-
-  /* GUIDE */
+  /* bottom-right guide (fixed) */
   .guide {
-    position: fixed;
-    bottom: 12px;
-    right: 12px;
-    width: 320px;
-    background: linear-gradient(180deg,#ffffff,#fbfdff);
-    border:1px solid rgba(63,107,255,0.12);
-    box-shadow:0 14px 40px rgba(31,41,55,0.12);
-    border-radius:12px;
-    z-index:9999;
-    overflow:hidden;
-    font-size:13px;
+    position:fixed; right:12px; bottom:12px; width:320px; background:#fff; border-radius:12px; box-shadow:0 14px 40px rgba(31,41,55,0.12);
+    z-index:10020; padding:0; border:1px solid rgba(63,107,255,0.12); font-size:13px;
   }
-  .guide.collapsed { width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  .guide .head{ display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid rgba(0,0,0,0.04); }
+  .guide .content{ padding:10px; max-height:320px; overflow:auto; }
+  .guide.collapsed{ width:48px; height:48px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center; }
+  #helpBtn { position:fixed; right:12px; bottom:12px; width:48px; height:48px; border-radius:50%; border:2px solid rgba(63,107,255,0.25); background:white; font-size:20px; display:none; z-index:10025; }
 
-  .guide .head{
-    display:flex; justify-content:space-between; align-items:center;
-    padding:10px; border-bottom:1px solid rgba(0,0,0,0.04);
+  /* responsive: collapse left tools into top toolbar on very small screens */
+  @media (max-width:920px){
+    .layout { padding:8px; gap:8px; }
+    .leftcol { display:none; }
+    .toolbar { flex-wrap:wrap; gap:6px; }
   }
-  .guide .title{font-weight:700; font-size:14px; color:#0b2545;}
-  .guide .actions button{
-    background:transparent; border:1px solid rgba(0,0,0,0.06);
-    padding:6px 8px; border-radius:8px; cursor:pointer;
+  @media (max-width:520px){
+    .guide { width:92%; right:4%; left:4%; bottom:12px; }
+    #helpBtn { right:14px; bottom:14px; }
   }
 
-  .guide .content{padding:10px; line-height:1.45; max-height:320px; overflow:auto;}
-  .guide .content h4{margin:6px 0; font-size:14px;}
-  .guide .content ul, .guide .content ol{margin-left:16px; margin-bottom:8px;}
-
-  .guide .footer{
-    padding:8px 10px; border-top:1px solid rgba(0,0,0,0.03);
-    display:flex; justify-content:space-between; align-items:center;
-    background:#ffffffcc;
-  }
-  .guide .pin{
-    background:transparent; border:1px solid rgba(0,0,0,0.06);
-    padding:6px; border-radius:8px; cursor:pointer;
-  }
-
-  /* Help button (restore guide) */
-  #helpBtn{
-    position: fixed;
-    bottom: 12px;
-    right: 12px;
-    width:48px; height:48px;
-    border-radius:50%;
-    background:white;
-    border:2px solid rgba(63,107,255,0.25);
-    box-shadow:0 10px 24px rgba(0,0,0,0.12);
-    font-size:22px;
-    cursor:pointer;
-    display:none;
-    z-index:9999;
-  }
-
-  @media(max-width:420px){
-    .guide{width:92%; right:6px; left:6px;}
-  }
+  /* small utility */
+  .small{ font-size:13px; padding:6px 8px }
+  .active{ box-shadow:0 6px 18px rgba(63,107,255,0.12); border-color:var(--accent) }
 </style>
 </head>
 <body>
+<div class="app">
 
-<!-- Toolbar -->
-<div class="toolbar">
-  <button id="addRect">Add rectangle</button>
-  <button id="addCircle">Add circle</button>
-  <button id="addText">Add text</button>
-  <button id="addImage">Add image (URL)</button>
-  <button id="bringFront">Bring forward</button>
-  <button id="sendBack">Send backward</button>
-  <button id="export">Export JSON</button>
-  <button id="import">Import JSON</button>
-  <input id="importFile" type="file" accept="application/json">
-  <button id="clearObjs">Clear objects</button>
-</div>
-
-<!-- Whiteboard Stage -->
-<div class="stage" id="stage">
-  <div class="objects-layer" id="objectsLayer"></div>
-  <div class="status" id="status">0 objects</div>
-</div>
-
-<!-- HOW TO GUIDE -->
-<aside id="guide" class="guide">
-  <div class="head">
-    <div>
-      <div class="title">How to use — Whiteboard</div>
-      <div style="font-size:11px;color:#555;">Quick guide</div>
+  <!-- top toolbar -->
+  <div class="toolbar" role="toolbar" aria-label="Main toolbar">
+    <div class="group">
+      <button id="addRect" class="small">Add Rect</button>
+      <button id="addCircle" class="small">Add Circle</button>
+      <button id="addText" class="small">Add Text</button>
+      <button id="addImage" class="small">Add Image</button>
+      <button id="dupBtn" class="small" title="Duplicate (Ctrl/Cmd+D)">Duplicate</button>
     </div>
-    <div class="actions">
-      <button id="collapseGuide">–</button>
-      <button id="closeGuide">✕</button>
+
+    <div class="group">
+      <button id="toggleGrid" class="small">Toggle Grid</button>
+      <label class="small">Grid:</label>
+      <select id="gridSize" class="small">
+        <option value="8">8px</option>
+        <option value="12" selected>12px</option>
+        <option value="20">20px</option>
+        <option value="32">32px</option>
+      </select>
+      <label class="small">Snap</label>
+      <input type="checkbox" id="snapToggle" checked>
+    </div>
+
+    <div class="group">
+      <button id="exportJSON" class="small">Export JSON</button>
+      <button id="importJSONbtn" class="small">Import JSON</button>
+      <input id="importJSONfile" type="file" accept="application/json" style="display:none">
+      <button id="clearAll" class="small">Clear All</button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="group">
+      <label class="small">Color</label>
+      <input id="penColor" type="color" value="#000000">
+      <label class="small">Size</label>
+      <input id="penSize" type="range" min="1" max="80" value="6">
+      <label class="small">Opacity</label>
+      <input id="penOpacity" type="range" min="0.1" max="1" step="0.05" value="1">
     </div>
   </div>
 
-  <div class="content" id="guideContent">
-    <h4>Add & move objects</h4>
-    <ul>
-      <li>Use the toolbar to add rectangle, circle, text or image.</li>
-      <li>Click object to select it.</li>
-      <li>Drag to move.</li>
-      <li>Use bottom-right handle to resize.</li>
-    </ul>
+  <!-- main layout -->
+  <div class="layout">
 
-    <h4>Editing</h4>
-    <ul>
-      <li>Double-click a text object to edit.</li>
-      <li>Press <b>Delete</b> to remove selected object.</li>
-    </ul>
+    <!-- left column: drawing tools -->
+    <div class="leftcol" aria-hidden="false">
+      <div id="penTool" class="toolbtn active" title="Pen">Pen</div>
+      <div id="highlighterTool" class="toolbtn">Highlighter</div>
+      <div id="eraserTool" class="toolbtn">Eraser</div>
+      <div id="selectTool" class="toolbtn">Select</div>
+      <div id="panHint" style="margin-top:6px;font-size:12px;color:#334">Hold <b>Space</b> to Pan</div>
+    </div>
 
-    <h4>Order & Save</h4>
-    <ul>
-      <li><b>Bring forward</b> / <b>Send backward</b> changes layering.</li>
-      <li><b>Export JSON</b> saves all objects.</li>
-      <li><b>Import JSON</b> restores them.</li>
-    </ul>
+    <!-- stage viewport -->
+    <div class="stage-viewport" id="viewport" tabindex="0" aria-label="Whiteboard viewport">
+      <!-- world (very large) -->
+      <div class="world nogrid" id="world">
+        <!-- drawing layer canvas (will match world size) -->
+        <canvas id="drawing" class="draw-layer"></canvas>
+
+        <!-- objects layer -->
+        <div id="objectsLayer" class="objects-layer"></div>
+      </div>
+    </div>
   </div>
 
-  <div class="footer">
-    <span style="font-size:12px;color:#445">Guide</span>
-    <button id="pinGuide" class="pin">📌 Pin</button>
-  </div>
-</aside>
+  <!-- guide (bottom-right) -->
+  <aside id="guide" class="guide" role="region" aria-label="How to use guide">
+    <div class="head">
+      <div>
+        <strong>How to use — Whiteboard</strong><br><small style="color:#445">Quick tips</small>
+      </div>
+      <div>
+        <button id="collapseGuide" class="small">–</button>
+        <button id="closeGuide" class="small">✕</button>
+      </div>
+    </div>
+    <div class="content" id="guideContent">
+      <h4>Basic</h4>
+      <ul>
+        <li>Add objects (rect/circle/text/image) from the toolbar.</li>
+        <li>Select an object to move, resize (bottom-right), or rotate (top-center).</li>
+        <li>Duplicate selected: <b>Ctrl/Cmd + D</b>. Delete: <b>Delete</b>.</li>
+      </ul>
 
-<!-- Help Button -->
-<button id="helpBtn">?</button>
+      <h4>Grid & Snap</h4>
+      <ul>
+        <li>Toggle grid and pick grid size. When Snap is ON, move/resize/rotate will snap to grid.</li>
+      </ul>
+
+      <h4>Pan & Draw</h4>
+      <ul>
+        <li>Hold the <b>Space</b> key and drag background to pan the canvas (objects & drawing move together).</li>
+        <li>Pick drawing tool (Pen / Highlighter / Eraser) then draw with pointer.</li>
+      </ul>
+
+      <h4>Export / Import</h4>
+      <ul>
+        <li>Export JSON saves objects (positions, size, rotation, html). Import restores them.</li>
+      </ul>
+    </div>
+  </aside>
+
+  <button id="helpBtn">?</button>
+
+</div>
 
 <script>
-/* OBJECT WHITEBOARD LOGIC */
+/* Advanced whiteboard script
+   Features added:
+   - object creation / drag / resize / rotate (with handles)
+   - duplicate (Ctrl/Cmd+D)
+   - grid snapping + toggle
+   - pan world using Space + drag
+   - drawing layer (pen/highlighter/eraser)
+   - responsive UI (left tools hidden on small screens)
+*/
 
-const objectsLayer = document.getElementById("objectsLayer");
-const statusEl = document.getElementById("status");
+/* -----------------------
+   Helpers & state
+   ----------------------- */
+const world = document.getElementById('world');
+const viewport = document.getElementById('viewport');
+const objectsLayer = document.getElementById('objectsLayer');
+const drawingCanvas = document.getElementById('drawing');
+const ctx = drawingCanvas.getContext('2d', { alpha: true });
+
+let worldW = 3000, worldH = 2000;
+drawingCanvas.width = worldW;
+drawingCanvas.height = worldH;
+drawingCanvas.style.width = worldW + 'px';
+drawingCanvas.style.height = worldH + 'px';
+
+let pan = { x: 0, y: 0 };    // world transform (in px)
+let scale = 1;              // reserved if zoom later
+function applyTransform(){
+  world.style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${scale})`;
+}
+applyTransform();
+
 let selected = null;
 let zCounter = 1;
+let objectIdCounter = 1;
 
-function updateStatus(){
-  statusEl.textContent = objectsLayer.children.length + " objects";
+// grid/snapping
+const toggleGridBtn = document.getElementById('toggleGrid');
+const snapToggle = document.getElementById('snapToggle');
+const gridSizeSelect = document.getElementById('gridSize');
+function setGrid(on){
+  if(on) world.classList.remove('nogrid');
+  else world.classList.add('nogrid');
+}
+let gridOn = false;
+let gridSize = parseInt(gridSizeSelect.value,10);
+setGrid(gridOn);
+
+// utility: convert page pointer -> world coords (accounts for pan & scale)
+function pageToWorld(clientX, clientY){
+  const rect = viewport.getBoundingClientRect();
+  const x = (clientX - rect.left) - pan.x;
+  const y = (clientY - rect.top) - pan.y;
+  return { x: x / scale, y: y / scale };
 }
 
-function createObject({x=50,y=50,w=180,h=120,cls='rect',html=''}) {
-  const el = document.createElement("div");
-  el.className = "obj " + cls;
-  el.style.left = x+"px";
-  el.style.top = y+"px";
-  el.style.width = w+"px";
-  el.style.height = h+"px";
-  el.style.zIndex = ++zCounter;
+// snapping helpers
+function snapValue(val){
+  if(!snapToggle.checked) return val;
+  const g = parseInt(gridSizeSelect.value,10) || 8;
+  return Math.round(val / g) * g;
+}
+function snapAngle(a){
+  if(!snapToggle.checked) return a;
+  // snap angle to 15 degrees
+  const step = 15;
+  return Math.round(a / step) * step;
+}
 
-  const content = document.createElement("div");
-  content.className = "content";
-  content.innerHTML = html;
+/* -----------------------
+   Drawing tools
+   ----------------------- */
+let drawMode = 'pen'; // 'pen'|'highlighter'|'eraser'|'select'
+const penToolBtn = document.getElementById('penTool');
+const highlighterToolBtn = document.getElementById('highlighterTool');
+const eraserToolBtn = document.getElementById('eraserTool');
+const selectToolBtn = document.getElementById('selectTool');
+
+const penColor = document.getElementById('penColor');
+const penSize = document.getElementById('penSize');
+const penOpacity = document.getElementById('penOpacity');
+
+function setActiveTool(t){
+  drawMode = t;
+  [penToolBtn, highlighterToolBtn, eraserToolBtn, selectToolBtn].forEach(b => b.classList.remove('active'));
+  if(t === 'pen') penToolBtn.classList.add('active');
+  if(t === 'highlighter') highlighterToolBtn.classList.add('active');
+  if(t === 'eraser') eraserToolBtn.classList.add('active');
+  if(t === 'select') selectToolBtn.classList.add('active');
+}
+penToolBtn.addEventListener('click', ()=> setActiveTool('pen'));
+highlighterToolBtn.addEventListener('click', ()=> setActiveTool('highlighter'));
+eraserToolBtn.addEventListener('click', ()=> setActiveTool('eraser'));
+selectToolBtn.addEventListener('click', ()=> setActiveTool('select'));
+
+let drawing = false;
+let lastPt = null;
+
+// pointer drawing on world coordinates (we'll draw directly into canvas bitmap)
+function startDrawAt(pt){
+  drawing = true;
+  lastPt = pt;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pt.x, pt.y);
+}
+function continueDrawTo(pt){
+  if(!drawing || !lastPt) return;
+  const size = Number(penSize.value);
+  if(drawMode === 'eraser'){
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.lineWidth = size;
+    ctx.strokeStyle = 'rgba(0,0,0,1)';
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+    ctx.restore();
+  } else if(drawMode === 'highlighter'){
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = Number(penOpacity.value) * 0.5;
+    ctx.lineWidth = size * 2;
+    ctx.strokeStyle = penColor.value;
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+    ctx.restore();
+  } else { // pen
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = Number(penOpacity.value);
+    ctx.lineWidth = size;
+    ctx.strokeStyle = penColor.value;
+    ctx.lineTo(pt.x, pt.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+  lastPt = pt;
+}
+function endDraw(){
+  drawing = false;
+  lastPt = null;
+}
+
+/* handle pointer events on viewport for both drawing and pan + object interactions */
+let panning = false;
+let panStart = null;
+let savedPan = null;
+let spaceDown = false;
+
+// We use pointerdown on viewport to either pan (space) or draw/select objects depending on mode
+viewport.addEventListener('pointerdown', (ev)=>{
+  // focus for keyboard
+  viewport.focus();
+
+  // if space is held -> start panning (drag world)
+  if(spaceDown){
+    panning = true;
+    panStart = { x: ev.clientX, y: ev.clientY };
+    savedPan = { x: pan.x, y: pan.y };
+    viewport.style.cursor = 'grabbing';
+    ev.preventDefault();
+    return;
+  }
+
+  // If select tool active, we let object pointer handlers handle events (they use pointer capture)
+  if(drawMode === 'select'){
+    // do nothing here; object interactions will catch events
+    return;
+  }
+
+  // If drawing tool active (pen/highlighter/eraser) and pointer on world, start drawing
+  const worldPt = pageToWorld(ev.clientX, ev.clientY);
+  if(drawMode === 'pen' || drawMode === 'highlighter' || drawMode === 'eraser'){
+    startDrawAt(worldPt);
+    ev.preventDefault();
+  }
+});
+window.addEventListener('pointermove', (ev)=>{
+  if(panning){
+    pan.x = savedPan.x + (ev.clientX - panStart.x);
+    pan.y = savedPan.y + (ev.clientY - panStart.y);
+    applyTransform();
+    return;
+  }
+  if(drawing){
+    const worldPt = pageToWorld(ev.clientX, ev.clientY);
+    continueDrawTo(worldPt);
+  }
+});
+window.addEventListener('pointerup', (ev)=>{
+  if(panning){ panning = false; viewport.style.cursor = 'default'; return; }
+  if(drawing){ endDraw(); }
+});
+window.addEventListener('keydown', (ev)=>{
+  if(ev.code === 'Space'){ spaceDown = true; viewport.style.cursor = 'grab'; ev.preventDefault(); }
+  // Duplicate: Ctrl/Cmd + D
+  if((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'd'){
+    if(selected) duplicateSelected();
+    ev.preventDefault();
+  }
+});
+window.addEventListener('keyup', (ev)=>{
+  if(ev.code === 'Space'){ spaceDown = false; viewport.style.cursor = 'default'; }
+});
+
+/* -----------------------
+   Objects management (create/drag/resize/rotate)
+   ----------------------- */
+
+function createObject({x=120,y=80,w=220,h=120, type='rect', html='' } = {}){
+  const el = document.createElement('div');
+  el.className = 'obj ' + (type==='circle' ? 'circle' : type==='text' ? 'text' : 'rect');
+  el.dataset.objId = 'obj' + (objectIdCounter++);
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.width = w + 'px';
+  el.style.height = h + 'px';
+  el.style.transform = 'rotate(0deg)';
+  el.style.zIndex = ++zCounter;
+  el.dataset.angle = '0';
+
+  const content = document.createElement('div');
+  content.className = 'content';
+  content.innerHTML = html || (type==='text' ? 'Double-click to edit' : '');
   el.appendChild(content);
 
-  const handle = document.createElement("div");
-  handle.className = "handle br";
-  el.appendChild(handle);
+  // handles
+  const rotateHandle = document.createElement('div');
+  rotateHandle.className = 'handle rotate';
+  el.appendChild(rotateHandle);
 
-  makeInteractive(el, handle);
+  const resizeHandle = document.createElement('div');
+  resizeHandle.className = 'handle resize';
+  el.appendChild(resizeHandle);
+
+  // attach behaviors
+  makeInteractiveObject(el, rotateHandle, resizeHandle);
+
   objectsLayer.appendChild(el);
   selectObject(el);
-  updateStatus();
   return el;
 }
 
 function selectObject(el){
-  if(selected) selected.classList.remove("selected");
+  if(selected) selected.classList.remove('selected');
   selected = el;
-  if(el) el.classList.add("selected");
+  if(el) el.classList.add('selected');
 }
 
-function removeObject(el){
-  if(!el) return;
-  if(el === selected) selected = null;
-  el.remove();
-  updateStatus();
+// deleting & duplicating
+function removeSelected(){
+  if(!selected) return;
+  selected.remove();
+  selected = null;
+}
+function duplicateSelected(){
+  if(!selected) return;
+  // clone element and append with small offset
+  const clone = selected.cloneNode(true);
+  clone.dataset.objId = 'obj' + (objectIdCounter++);
+  // small offset
+  const left = parseFloat(selected.style.left || 0) + 20;
+  const top = parseFloat(selected.style.top || 0) + 20;
+  clone.style.left = left + 'px';
+  clone.style.top = top + 'px';
+  clone.style.zIndex = ++zCounter;
+  // re-hook handlers (cloneNode keeps children but not listeners)
+  const rotateHandle = clone.querySelector('.handle.rotate');
+  const resizeHandle = clone.querySelector('.handle.resize');
+  makeInteractiveObject(clone, rotateHandle, resizeHandle);
+  objectsLayer.appendChild(clone);
+  selectObject(clone);
 }
 
-function bringForward(){ if(selected) selected.style.zIndex = ++zCounter; }
-function sendBackward(){ if(selected) selected.style.zIndex = 1; }
-
-function makeInteractive(el, handle){
-  /* Drag logic */
-  let dragging = false;
-  let dragStart = null;
-  let orig = null;
-
-  el.addEventListener("pointerdown", e=>{
-    if(e.target === handle) return;
-    if(e.button!==0) return;
-    e.stopPropagation();
+/* makeInteractiveObject: drag / resize / rotate using pointer events
+   All positions & sizes are in world coordinates (absolute CSS left/top/width/height).
+*/
+function makeInteractiveObject(el, rotateHandle, resizeHandle){
+  // dragging
+  let dragging=false, dragStart=null, orig=null;
+  el.addEventListener('pointerdown', (ev)=>{
+    if(ev.button && ev.button !== 0) return;
+    // if clicking on handles, let handle handlers take over
+    if(ev.target === rotateHandle || ev.target === resizeHandle) return;
+    ev.stopPropagation();
+    el.setPointerCapture && el.setPointerCapture(ev.pointerId);
     dragging = true;
-    dragStart = {x:e.clientX,y:e.clientY};
-    orig = {left:parseFloat(el.style.left),top:parseFloat(el.style.top)};
+    dragStart = { x: ev.clientX, y: ev.clientY };
+    orig = { left: parseFloat(el.style.left || 0), top: parseFloat(el.style.top || 0) };
     selectObject(el);
   });
-
-  window.addEventListener("pointermove", e=>{
+  window.addEventListener('pointermove', (ev)=>{
     if(!dragging) return;
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    el.style.left = orig.left + dx + "px";
-    el.style.top  = orig.top  + dy + "px";
+    const pt = pageToWorld(ev.clientX, ev.clientY);
+    // compute delta in world coords using client movement
+    const dx = ev.clientX - dragStart.x;
+    const dy = ev.clientY - dragStart.y;
+    let newLeft = orig.left + dx;
+    let newTop = orig.top + dy;
+    if(snapToggle.checked){
+      newLeft = snapValue(newLeft);
+      newTop = snapValue(newTop);
+    }
+    el.style.left = newLeft + 'px';
+    el.style.top = newTop + 'px';
+  });
+  window.addEventListener('pointerup', (ev)=>{
+    if(!dragging) return;
+    dragging = false;
+    el.releasePointerCapture && el.releasePointerCapture(ev.pointerId);
   });
 
-  window.addEventListener("pointerup", ()=> dragging=false);
-
-  /* Resize */
+  // resize (bottom-right)
   let resizing=false, rStart=null, rOrig=null;
-  handle.addEventListener("pointerdown", e=>{
-    e.stopPropagation();
-    resizing=true;
-    rStart={x:e.clientX,y:e.clientY};
-    rOrig={w:el.offsetWidth,h:el.offsetHeight};
+  resizeHandle.addEventListener('pointerdown', (ev)=>{
+    ev.stopPropagation();
+    el.setPointerCapture && el.setPointerCapture(ev.pointerId);
+    resizing = true;
+    rStart = { x: ev.clientX, y: ev.clientY };
+    rOrig = { w: el.offsetWidth, h: el.offsetHeight };
     selectObject(el);
   });
-
-  window.addEventListener("pointermove", e=>{
+  window.addEventListener('pointermove', (ev)=>{
     if(!resizing) return;
-    const dx = e.clientX - rStart.x;
-    const dy = e.clientY - rStart.y;
-    el.style.width = Math.max(30,rOrig.w+dx)+"px";
-    el.style.height = Math.max(20,rOrig.h+dy)+"px";
+    const dx = ev.clientX - rStart.x;
+    const dy = ev.clientY - rStart.y;
+    let newW = Math.max(30, rOrig.w + dx);
+    let newH = Math.max(20, rOrig.h + dy);
+    if(snapToggle.checked){
+      newW = snapValue(newW);
+      newH = snapValue(newH);
+    }
+    el.style.width = newW + 'px';
+    el.style.height = newH + 'px';
+  });
+  window.addEventListener('pointerup', (ev)=>{
+    if(!resizing) return;
+    resizing = false;
+    resizeHandle.releasePointerCapture && resizeHandle.releasePointerCapture(ev.pointerId);
   });
 
-  window.addEventListener("pointerup", ()=> resizing=false);
+  // rotate (top center)
+  let rotating=false, rotStart=null, origAngle=0, center=null;
+  rotateHandle.addEventListener('pointerdown', (ev)=>{
+    ev.stopPropagation();
+    el.setPointerCapture && el.setPointerCapture(ev.pointerId);
+    rotating = true;
+    rotStart = { x: ev.clientX, y: ev.clientY };
+    // compute center (world coords)
+    const rect = el.getBoundingClientRect();
+    const vpRect = viewport.getBoundingClientRect();
+    const cx = rect.left + rect.width/2;
+    const cy = rect.top + rect.height/2;
+    center = pageToWorld(cx, cy);
+    origAngle = parseFloat(el.dataset.angle || '0');
+    selectObject(el);
+  });
+  window.addEventListener('pointermove', (ev)=>{
+    if(!rotating) return;
+    const p = pageToWorld(ev.clientX, ev.clientY);
+    const dx = p.x - center.x;
+    const dy = p.y - center.y;
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    // compute delta relative to starting angle
+    let newAngle = angle + 90; // align handle top-center
+    // Normalize angle and add origAngle offset (to allow incremental rotation)
+    // We'll compute rotation as difference from pointer angle to center, plus origAngle adjusted by start
+    // Simpler: compute starting pointer angle at rotStart and then delta:
+    // But we didn't store start angle; instead treat origAngle as base and set newAngle to angle degrees
+    // To keep behavior intuitive, we compute angle difference between current pointer and center and convert:
+    // Use newAngle as angle* (already computed)
+    // Allow snapping
+    if(snapToggle.checked) newAngle = snapAngle(newAngle);
+    el.style.transform = `rotate(${newAngle}deg)`;
+    el.dataset.angle = String(newAngle);
+  });
+  window.addEventListener('pointerup', (ev)=>{
+    if(!rotating) return;
+    rotating = false;
+    rotateHandle.releasePointerCapture && rotateHandle.releasePointerCapture(ev.pointerId);
+  });
 
-  /* Text edit */
-  if(el.classList.contains("text")){
-    el.addEventListener("dblclick", ()=>{
-      const c = el.querySelector(".content");
-      c.contentEditable = true; c.focus();
-      c.addEventListener("blur", ()=> c.contentEditable=false,{once:true});
-    });
-  }
+  // double-click to edit text
+  el.addEventListener('dblclick', (ev)=>{
+    if(el.classList.contains('text')){
+      const c = el.querySelector('.content');
+      c.contentEditable = true;
+      c.focus();
+      c.addEventListener('blur', ()=> c.contentEditable = false, { once:true });
+    }
+  });
 
-  el.addEventListener("click", e=>{ e.stopPropagation(); selectObject(el); });
+  // click selects
+  el.addEventListener('click', (ev)=> { ev.stopPropagation(); selectObject(el); });
 }
 
-/* Toolbar Wiring */
-document.getElementById("addRect").onclick = ()=> createObject({cls:"rect"});
-document.getElementById("addCircle").onclick = ()=> createObject({cls:"circle",w:140,h:140});
-document.getElementById("addText").onclick = ()=> createObject({cls:"text",w:200,h:60,html:"Double-click to edit"});
-document.getElementById("addImage").onclick = ()=>{
-  const url = prompt("Image URL (direct link)");
-  if(url) createObject({cls:"rect",w:220,h:140,html:`<img src="${escape(url)}" />`});
-};
-
-document.getElementById("bringFront").onclick = bringForward;
-document.getElementById("sendBack").onclick = sendBackward;
-
-document.getElementById("export").onclick = ()=>{
-  const out=[];
+/* -----------------------
+   Toolbar wiring (objects)
+   ----------------------- */
+document.getElementById('addRect').addEventListener('click', ()=> createObject({ type:'rect' }));
+document.getElementById('addCircle').addEventListener('click', ()=> createObject({ type:'circle', w:140, h:140 }));
+document.getElementById('addText').addEventListener('click', ()=> createObject({ type:'text', w:220, h:80, html:'Double-click to edit' }));
+document.getElementById('addImage').addEventListener('click', ()=>{
+  const url = prompt('Image URL (direct)');
+  if(!url) return;
+  createObject({ type:'rect', w:260, h:160, html:`<img src="${url.replace(/"/g,'')}" alt="">` });
+});
+document.getElementById('dupBtn').addEventListener('click', ()=> duplicateSelected());
+document.getElementById('clearAll').addEventListener('click', ()=>{
+  if(confirm('Remove all objects and drawings?')){
+    objectsLayer.innerHTML = '';
+    ctx.clearRect(0,0,drawingCanvas.width,drawingCanvas.height);
+  }
+});
+document.getElementById('exportJSON').addEventListener('click', ()=>{
+  const out = [];
   for(const el of objectsLayer.children){
-    if(!el.classList.contains("obj")) continue;
+    if(!el.classList.contains('obj')) continue;
     out.push({
-      type:el.classList.contains("circle")?'circle':el.classList.contains("text")?'text':'rect',
-      left:parseFloat(el.style.left),
-      top:parseFloat(el.style.top),
-      width:parseFloat(el.style.width),
-      height:parseFloat(el.style.height),
-      html:el.querySelector(".content").innerHTML,
-      z:parseInt(el.style.zIndex)
+      id: el.dataset.objId,
+      type: el.classList.contains('circle') ? 'circle' : el.classList.contains('text') ? 'text' : 'rect',
+      left: parseFloat(el.style.left || 0),
+      top: parseFloat(el.style.top || 0),
+      width: parseFloat(el.style.width || el.offsetWidth),
+      height: parseFloat(el.style.height || el.offsetHeight),
+      angle: parseFloat(el.dataset.angle || 0),
+      html: el.querySelector('.content').innerHTML,
+      z: parseInt(el.style.zIndex || 0, 10)
     });
   }
-  const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="objects.json";
-  document.body.appendChild(a); a.click(); a.remove();
-};
-
-document.getElementById("import").onclick = ()=> importFile.click();
-const importFile=document.getElementById("importFile");
-importFile.onchange = e=>{
-  const f=e.target.files[0];
-  if(!f) return;
-  const reader=new FileReader();
-  reader.onload = ev=>{
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'whiteboard-objects.json'; a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById('importJSONbtn').addEventListener('click', ()=> document.getElementById('importJSONfile').click());
+document.getElementById('importJSONfile').addEventListener('change', (ev)=>{
+  const f = ev.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
     try{
-      const data=JSON.parse(ev.target.result);
-      objectsLayer.innerHTML="";
-      zCounter=1;
+      const data = JSON.parse(e.target.result);
+      objectsLayer.innerHTML = '';
       for(const item of data){
-        const el=createObject({
-          x:item.left,y:item.top,w:item.width,h:item.height,
-          cls:item.type,html:item.html
-        });
-        if(item.z) el.style.zIndex=item.z;
+        const el = createObject({ x:item.left, y:item.top, w:item.width, h:item.height, type:item.type, html:item.html });
+        el.style.zIndex = item.z || 1;
+        el.style.transform = `rotate(${item.angle || 0}deg)`;
+        el.dataset.angle = String(item.angle || 0);
       }
-      updateStatus();
-    }catch(err){
-      alert("Invalid JSON");
-    }
+    }catch(err){ alert('Invalid JSON'); }
   };
   reader.readAsText(f);
-};
+  ev.target.value = '';
+});
 
-/* clear */
-document.getElementById("clearObjs").onclick = ()=>{
-  if(confirm("Clear all objects?")){
-    objectsLayer.innerHTML="";
-    selected=null;
-    updateStatus();
-  }
-};
+/* grid toggle */
+toggleGridBtn.addEventListener('click', ()=>{
+  gridOn = !gridOn;
+  setGrid(gridOn);
+});
 
-document.getElementById("stage").onclick = ()=> selectObject(null);
+/* -----------------------
+   Duplicate + Delete keys
+   ----------------------- */
+window.addEventListener('keydown', (ev)=>{
+  if((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'd'){ if(selected) duplicateSelected(); ev.preventDefault(); }
+  if(ev.key === 'Delete' || ev.key === 'Backspace'){ if(selected) { removeSelected(); ev.preventDefault(); } }
+});
 
-/* Delete key */
-window.addEventListener("keydown", e=>{
-  if((e.key==="Delete"||e.key==="Backspace") && selected){
-    removeObject(selected);
+/* -----------------------
+   Guide show/hide + restore button
+   ----------------------- */
+const guide = document.getElementById('guide');
+const collapseGuideBtn = document.getElementById('collapseGuide');
+const closeGuideBtn = document.getElementById('closeGuide');
+const helpBtn = document.getElementById('helpBtn');
+
+const GUIDE_KEY = 'wb_guide_state_v2';
+let guideState = { open:true };
+try{
+  const s = localStorage.getItem(GUIDE_KEY);
+  if(s) guideState = JSON.parse(s);
+} catch(e){}
+
+function applyGuideState(){
+  if(!guideState.open){ guide.style.display = 'none'; helpBtn.style.display = 'block'; }
+  else { guide.style.display = 'block'; helpBtn.style.display = 'none'; }
+}
+applyGuideState();
+
+collapseGuideBtn.addEventListener('click', ()=>{
+  guideState.open = !guideState.open;
+  localStorage.setItem(GUIDE_KEY, JSON.stringify(guideState));
+  applyGuideState();
+});
+closeGuideBtn.addEventListener('click', ()=>{
+  guideState.open = false;
+  localStorage.setItem(GUIDE_KEY, JSON.stringify(guideState));
+  applyGuideState();
+});
+helpBtn.addEventListener('click', ()=>{ guideState.open = true; localStorage.setItem(GUIDE_KEY, JSON.stringify(guideState)); applyGuideState(); });
+
+/* -----------------------
+   Responsiveness: adjust world size on viewport resize
+   ----------------------- */
+function resizeWorld(){
+  const vw = viewport.clientWidth;
+  const vh = viewport.clientHeight;
+  // make world at least double viewport to feel like infinite; adjust canvas size accordingly
+  worldW = Math.max(1600, Math.floor(vw * 2));
+  worldH = Math.max(1200, Math.floor(vh * 2));
+  world.style.width = worldW + 'px';
+  world.style.height = worldH + 'px';
+  drawingCanvas.width = worldW;
+  drawingCanvas.height = worldH;
+  drawingCanvas.style.width = worldW + 'px';
+  drawingCanvas.style.height = worldH + 'px';
+  // redraw nothing; drawing persists in bitmap coordinates (we do not scale)
+}
+window.addEventListener('resize', resizeWorld);
+resizeWorld();
+
+/* -----------------------
+   Initialize demo objects
+   ----------------------- */
+createObject({ x:80, y:60, w:260, h:150, type:'rect' });
+createObject({ x:420, y:120, w:160, h:160, type:'circle' });
+createObject({ x:120, y:320, w:260, h:110, type:'text', html:'Double-click to edit' });
+
+/* -----------------------
+   Final small UX bindings
+   ----------------------- */
+gridSizeSelect.addEventListener('change', ()=> gridSize = parseInt(gridSizeSelect.value,10));
+snapToggle.addEventListener('change', ()=> {/* nothing extra; snapValue checks the checkbox */});
+penColor.addEventListener('change', ()=> {/* color updated on draw */});
+penSize.addEventListener('input', ()=> {/* size updated */});
+penOpacity.addEventListener('input', ()=> {/* opacity */});
+
+/* small instruction: clicking outside deselects */
+viewport.addEventListener('pointerdown', (ev)=> {
+  // if clicking on empty world (not objects), deselect
+  const el = ev.target;
+  if(el === world || el === drawingCanvas || el === viewport){
+    selectObject(null);
   }
 });
 
-/* HOW TO GUIDE LOGIC */
-
-const GUIDE_KEY="guide_state_v1";
-let guideState = loadState();
-
-const guide=document.getElementById("guide");
-const collapseBtn=document.getElementById("collapseGuide");
-const closeBtn=document.getElementById("closeGuide");
-const pinBtn=document.getElementById("pinGuide");
-const helpBtn=document.getElementById("helpBtn");
-const guideContent=document.getElementById("guideContent");
-
-function loadState(){
-  try{
-    return JSON.parse(localStorage.getItem(GUIDE_KEY)) || {open:true,pinned:false};
-  }catch{
-    return {open:true,pinned:false};
-  }
-}
-function saveState(){
-  localStorage.setItem(GUIDE_KEY, JSON.stringify(guideState));
-}
-
-function applyGuide(){
-  if(!guideState.open){
-    guide.classList.add("collapsed");
-    collapseBtn.textContent="+";
-    guideContent.style.display="none";
-    helpBtn.style.display="flex";
-  } else {
-    guide.classList.remove("collapsed");
-    collapseBtn.textContent="–";
-    guideContent.style.display="";
-    helpBtn.style.display="none";
-  }
-  pinBtn.textContent = guideState.pinned ? "📌 Pinned" : "📌 Pin";
-}
-
-applyGuide();
-
-/* Collapse */
-collapseBtn.onclick = ()=>{
-  guideState.open = !guideState.open;
-  applyGuide();
-  saveState();
-};
-
-/* Close (hide) */
-closeBtn.onclick = ()=>{
-  guide.style.display="none";
-  helpBtn.style.display="flex";
-  guideState.open=false;
-  saveState();
-};
-
-/* Pin */
-pinBtn.onclick = ()=>{
-  guideState.pinned=!guideState.pinned;
-  saveState();
-  applyGuide();
-};
-
-/* Help button restores guide */
-helpBtn.onclick = ()=>{
-  guide.style.display="block";
-  guideState.open=true;
-  helpBtn.style.display="none";
-  saveState();
-};
-
-/* init objects */
-createObject({x:40,y:40,w:220,h:130,cls:'rect'});
-createObject({x:300,y:90,w:180,h:180,cls:'circle'});
-createObject({x:80,y:240,w:260,h:90,cls:'text',html:'Double-click to edit'});
-updateStatus();
 </script>
 </body>
 </html>
