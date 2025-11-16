@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Whiteboard — Objects layer demo</title>
+<title>Whiteboard — Objects layer + Guide Restore</title>
 <style>
   :root{
-    --bg:#eef3ff; --panel:#fff; --accent:#3f6bff;
+    --bg:#eef3ff; --panel:#fff; --accent:#3f6bff; --muted:#8b9cff;
   }
   body{margin:0;font-family:system-ui,Arial;background:var(--bg);height:100vh;display:flex;flex-direction:column}
-  .toolbar{display:flex;gap:8px;padding:10px;background:linear-gradient(180deg,#fff, #f7fbff);align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+  .toolbar{display:flex;gap:8px;padding:10px;background:linear-gradient(180deg,#fff,#f7fbff);align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
   .toolbar button{padding:6px 10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:white;cursor:pointer}
+  .toolbar input[type="file"]{display:none}
   .stage{
     flex:1;
     margin:12px;
@@ -19,51 +20,102 @@
     background:white;
     position:relative;
     overflow:hidden;
-    min-height:300px;
+    min-height:320px;
   }
 
-  /* objects layer — holds DOM objects */
-  .objects-layer{
-    position:absolute; inset:0; pointer-events:auto;
-  }
+  .objects-layer{position:absolute; inset:0; pointer-events:auto;}
 
-  /* example object base styles */
   .obj {
     position:absolute;
     box-sizing:border-box;
     touch-action:none;
     user-select:none;
+    transition: box-shadow .12s ease;
   }
   .obj .content{
     width:100%; height:100%; overflow:hidden;
     display:flex; align-items:center; justify-content:center;
   }
 
-  /* shape presets */
-  .obj.rect{ background: rgba(63,107,255,0.08); border:2px solid rgba(63,107,255,0.28); border-radius:6px; }
-  .obj.circle{ background: rgba(255,200,60,0.12); border:2px solid rgba(255,180,0,0.28); border-radius:999px; }
+  .obj.rect{ background: rgba(63,107,255,0.06); border:2px solid rgba(63,107,255,0.18); border-radius:6px; }
+  .obj.circle{ background: rgba(255,200,60,0.10); border:2px solid rgba(255,180,0,0.22); border-radius:999px; }
   .obj.text{ background: rgba(255,255,255,0.0); border:1px dashed rgba(0,0,0,0.06); padding:6px 8px; font-size:16px; color:#111; }
   .obj img{ display:block; width:100%; height:100%; object-fit:cover; border-radius:6px; }
 
-  /* selected outline */
-  .obj.selected{ box-shadow: 0 6px 18px rgba(16,24,40,0.12); outline: 2px solid rgba(63,107,255,0.14); }
+  .obj.selected{ box-shadow:0 8px 28px rgba(16,24,40,0.12); outline:2px solid rgba(63,107,255,0.12); }
 
-  /* resize handle */
   .handle{
-    position:absolute; width:12px; height:12px; background:white; border:2px solid rgba(0,0,0,0.12); border-radius:3px; box-sizing:border-box;
+    position:absolute; width:12px; height:12px; background:white; border:2px solid rgba(0,0,0,0.12); border-radius:3px;
   }
-  .handle.br{ right:-8px; bottom:-8px; cursor:se-resize; }
-  .handle.tl{ left:-8px; top:-8px; cursor:nw-resize; }
-  .handle.tr{ right:-8px; top:-8px; cursor:ne-resize; }
-  .handle.bl{ left:-8px; bottom:-8px; cursor:sw-resize; }
+  .handle.br{right:-8px; bottom:-8px; cursor:se-resize;}
 
-  /* small status area */
-  .status{position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,0.06); padding:6px 8px; border-radius:8px; font-size:13px}
+  .status{position:absolute; left:12px; bottom:12px; background:rgba(0,0,0,0.06); padding:6px 8px; border-radius:8px; font-size:13px}
+
+  /* GUIDE */
+  .guide {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    width: 320px;
+    background: linear-gradient(180deg,#ffffff,#fbfdff);
+    border:1px solid rgba(63,107,255,0.12);
+    box-shadow:0 14px 40px rgba(31,41,55,0.12);
+    border-radius:12px;
+    z-index:9999;
+    overflow:hidden;
+    font-size:13px;
+  }
+  .guide.collapsed { width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+
+  .guide .head{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px; border-bottom:1px solid rgba(0,0,0,0.04);
+  }
+  .guide .title{font-weight:700; font-size:14px; color:#0b2545;}
+  .guide .actions button{
+    background:transparent; border:1px solid rgba(0,0,0,0.06);
+    padding:6px 8px; border-radius:8px; cursor:pointer;
+  }
+
+  .guide .content{padding:10px; line-height:1.45; max-height:320px; overflow:auto;}
+  .guide .content h4{margin:6px 0; font-size:14px;}
+  .guide .content ul, .guide .content ol{margin-left:16px; margin-bottom:8px;}
+
+  .guide .footer{
+    padding:8px 10px; border-top:1px solid rgba(0,0,0,0.03);
+    display:flex; justify-content:space-between; align-items:center;
+    background:#ffffffcc;
+  }
+  .guide .pin{
+    background:transparent; border:1px solid rgba(0,0,0,0.06);
+    padding:6px; border-radius:8px; cursor:pointer;
+  }
+
+  /* Help button (restore guide) */
+  #helpBtn{
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    width:48px; height:48px;
+    border-radius:50%;
+    background:white;
+    border:2px solid rgba(63,107,255,0.25);
+    box-shadow:0 10px 24px rgba(0,0,0,0.12);
+    font-size:22px;
+    cursor:pointer;
+    display:none;
+    z-index:9999;
+  }
+
+  @media(max-width:420px){
+    .guide{width:92%; right:6px; left:6px;}
+  }
 </style>
 </head>
 <body>
 
-<div class="toolbar" role="toolbar" aria-label="object toolbar">
+<!-- Toolbar -->
+<div class="toolbar">
   <button id="addRect">Add rectangle</button>
   <button id="addCircle">Add circle</button>
   <button id="addText">Add text</button>
@@ -72,53 +124,91 @@
   <button id="sendBack">Send backward</button>
   <button id="export">Export JSON</button>
   <button id="import">Import JSON</button>
-  <input id="importFile" type="file" accept="application/json" style="display:none"/>
+  <input id="importFile" type="file" accept="application/json">
   <button id="clearObjs">Clear objects</button>
-  <div style="flex:1"></div>
-  <div style="font-size:13px;color:#555">Tip: Drag objects, resize with corner handle, press Delete to remove</div>
 </div>
 
+<!-- Whiteboard Stage -->
 <div class="stage" id="stage">
-  <!-- objects layer -->
-  <div class="objects-layer" id="objectsLayer" ></div>
+  <div class="objects-layer" id="objectsLayer"></div>
   <div class="status" id="status">0 objects</div>
 </div>
 
+<!-- HOW TO GUIDE -->
+<aside id="guide" class="guide">
+  <div class="head">
+    <div>
+      <div class="title">How to use — Whiteboard</div>
+      <div style="font-size:11px;color:#555;">Quick guide</div>
+    </div>
+    <div class="actions">
+      <button id="collapseGuide">–</button>
+      <button id="closeGuide">✕</button>
+    </div>
+  </div>
+
+  <div class="content" id="guideContent">
+    <h4>Add & move objects</h4>
+    <ul>
+      <li>Use the toolbar to add rectangle, circle, text or image.</li>
+      <li>Click object to select it.</li>
+      <li>Drag to move.</li>
+      <li>Use bottom-right handle to resize.</li>
+    </ul>
+
+    <h4>Editing</h4>
+    <ul>
+      <li>Double-click a text object to edit.</li>
+      <li>Press <b>Delete</b> to remove selected object.</li>
+    </ul>
+
+    <h4>Order & Save</h4>
+    <ul>
+      <li><b>Bring forward</b> / <b>Send backward</b> changes layering.</li>
+      <li><b>Export JSON</b> saves all objects.</li>
+      <li><b>Import JSON</b> restores them.</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    <span style="font-size:12px;color:#445">Guide</span>
+    <button id="pinGuide" class="pin">📌 Pin</button>
+  </div>
+</aside>
+
+<!-- Help Button -->
+<button id="helpBtn">?</button>
+
 <script>
-/*
-  Objects-in-div whiteboard demo
-  - Each object is a DOM element placed inside #objectsLayer (absolute coords)
-  - Supports create, drag, resize, select, delete, z-order, export/import
-*/
+/* OBJECT WHITEBOARD LOGIC */
 
-const objectsLayer = document.getElementById('objectsLayer');
-const statusEl = document.getElementById('status');
-
+const objectsLayer = document.getElementById("objectsLayer");
+const statusEl = document.getElementById("status");
+let selected = null;
 let zCounter = 1;
-function updateStatus(){ statusEl.textContent = objectsLayer.children.length + ' objects'; }
 
-// Utility: create a new object element with common structure
-function createObject({x=50,y=50,w=180,h=120,cls='rect', html='' }){
-  const el = document.createElement('div');
-  el.className = 'obj ' + cls;
-  el.style.left = x + 'px';
-  el.style.top  = y + 'px';
-  el.style.width = w + 'px';
-  el.style.height = h + 'px';
+function updateStatus(){
+  statusEl.textContent = objectsLayer.children.length + " objects";
+}
+
+function createObject({x=50,y=50,w=180,h=120,cls='rect',html=''}) {
+  const el = document.createElement("div");
+  el.className = "obj " + cls;
+  el.style.left = x+"px";
+  el.style.top = y+"px";
+  el.style.width = w+"px";
+  el.style.height = h+"px";
   el.style.zIndex = ++zCounter;
-  el.dataset.type = cls;
 
-  const content = document.createElement('div');
-  content.className = 'content';
-  content.innerHTML = html || '';
+  const content = document.createElement("div");
+  content.className = "content";
+  content.innerHTML = html;
   el.appendChild(content);
 
-  // add resize handle (bottom-right)
-  const handle = document.createElement('div');
-  handle.className = 'handle br';
+  const handle = document.createElement("div");
+  handle.className = "handle br";
   el.appendChild(handle);
 
-  // attach behaviors
   makeInteractive(el, handle);
   objectsLayer.appendChild(el);
   selectObject(el);
@@ -126,16 +216,12 @@ function createObject({x=50,y=50,w=180,h=120,cls='rect', html='' }){
   return el;
 }
 
-// Make element draggable, resizable and selectable
-let selected = null;
-
 function selectObject(el){
-  if(selected) selected.classList.remove('selected');
+  if(selected) selected.classList.remove("selected");
   selected = el;
-  if(el) el.classList.add('selected');
+  if(el) el.classList.add("selected");
 }
 
-// remove object
 function removeObject(el){
   if(!el) return;
   if(el === selected) selected = null;
@@ -143,175 +229,219 @@ function removeObject(el){
   updateStatus();
 }
 
-// Bring forward / send backward
-function bringForward(){
-  if(!selected) return;
-  selected.style.zIndex = ++zCounter;
-}
-function sendBackward(){
-  if(!selected) return;
-  // set to lowest visible
-  selected.style.zIndex = 1;
-}
+function bringForward(){ if(selected) selected.style.zIndex = ++zCounter; }
+function sendBackward(){ if(selected) selected.style.zIndex = 1; }
 
-// Make interactive: pointer dragging and resize handle logic
 function makeInteractive(el, handle){
-  // Pointer drag on element (but avoid when starting on handle)
-  let dragging=false, dragStart=null, orig=null;
+  /* Drag logic */
+  let dragging = false;
+  let dragStart = null;
+  let orig = null;
 
-  el.addEventListener('pointerdown', (ev)=>{
-    // only left button
-    if(ev.button && ev.button !== 0) return;
-    // if clicking handle, don't start move
-    if(ev.target === handle) return;
-    ev.stopPropagation();
-    el.setPointerCapture && el.setPointerCapture(ev.pointerId);
+  el.addEventListener("pointerdown", e=>{
+    if(e.target === handle) return;
+    if(e.button!==0) return;
+    e.stopPropagation();
     dragging = true;
-    dragStart = {x: ev.clientX, y: ev.clientY};
-    orig = {left: parseFloat(el.style.left), top: parseFloat(el.style.top)};
+    dragStart = {x:e.clientX,y:e.clientY};
+    orig = {left:parseFloat(el.style.left),top:parseFloat(el.style.top)};
     selectObject(el);
   });
 
-  window.addEventListener('pointermove', (ev) => {
+  window.addEventListener("pointermove", e=>{
     if(!dragging) return;
-    const dx = ev.clientX - dragStart.x;
-    const dy = ev.clientY - dragStart.y;
-    el.style.left = (orig.left + dx) + 'px';
-    el.style.top  = (orig.top  + dy) + 'px';
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    el.style.left = orig.left + dx + "px";
+    el.style.top  = orig.top  + dy + "px";
   });
 
-  window.addEventListener('pointerup', (ev) => {
-    if(!dragging) return;
-    dragging = false;
-    el.releasePointerCapture && el.releasePointerCapture(ev.pointerId);
-  });
+  window.addEventListener("pointerup", ()=> dragging=false);
 
-  // Resize via handle (br)
+  /* Resize */
   let resizing=false, rStart=null, rOrig=null;
-  handle.addEventListener('pointerdown', (ev)=>{
-    ev.stopPropagation();
-    resizing = true;
-    rStart = {x: ev.clientX, y: ev.clientY};
-    rOrig = {w: el.offsetWidth, h: el.offsetHeight};
-    handle.setPointerCapture && handle.setPointerCapture(ev.pointerId);
+  handle.addEventListener("pointerdown", e=>{
+    e.stopPropagation();
+    resizing=true;
+    rStart={x:e.clientX,y:e.clientY};
+    rOrig={w:el.offsetWidth,h:el.offsetHeight};
     selectObject(el);
   });
-  window.addEventListener('pointermove', (ev)=>{
+
+  window.addEventListener("pointermove", e=>{
     if(!resizing) return;
-    const dx = ev.clientX - rStart.x;
-    const dy = ev.clientY - rStart.y;
-    el.style.width = Math.max(30, rOrig.w + dx) + 'px';
-    el.style.height = Math.max(20, rOrig.h + dy) + 'px';
-  });
-  window.addEventListener('pointerup', (ev)=>{
-    if(!resizing) return;
-    resizing = false;
-    handle.releasePointerCapture && handle.releasePointerCapture(ev.pointerId);
+    const dx = e.clientX - rStart.x;
+    const dy = e.clientY - rStart.y;
+    el.style.width = Math.max(30,rOrig.w+dx)+"px";
+    el.style.height = Math.max(20,rOrig.h+dy)+"px";
   });
 
-  // double click text editing
-  if(el.classList.contains('text')){
-    el.addEventListener('dblclick', ()=> {
-      const content = el.querySelector('.content');
-      content.contentEditable = true;
-      content.focus();
-      // stop being editable on blur
-      content.addEventListener('blur', ()=> content.contentEditable = false, {once:true});
+  window.addEventListener("pointerup", ()=> resizing=false);
+
+  /* Text edit */
+  if(el.classList.contains("text")){
+    el.addEventListener("dblclick", ()=>{
+      const c = el.querySelector(".content");
+      c.contentEditable = true; c.focus();
+      c.addEventListener("blur", ()=> c.contentEditable=false,{once:true});
     });
   }
 
-  // click selects
-  el.addEventListener('click', (e)=> { e.stopPropagation(); selectObject(el); });
-
-  // keyboard delete when selected (global handler)
+  el.addEventListener("click", e=>{ e.stopPropagation(); selectObject(el); });
 }
 
-// toolbar actions
-document.getElementById('addRect').addEventListener('click', ()=> createObject({cls:'rect'}));
-document.getElementById('addCircle').addEventListener('click', ()=> createObject({cls:'circle', w:140, h:140}));
-document.getElementById('addText').addEventListener('click', ()=> createObject({cls:'text', w:200, h:60, html:'Click to edit'}));
-document.getElementById('addImage').addEventListener('click', async ()=>{
-  const url = prompt('Image URL (paste a direct image link)');
-  if(!url) return;
-  const el = createObject({cls:'rect', w:220, h:140, html:`<img src="${escapeHtml(url)}" alt="img">`});
-  // allow the image to load and fill
-});
+/* Toolbar Wiring */
+document.getElementById("addRect").onclick = ()=> createObject({cls:"rect"});
+document.getElementById("addCircle").onclick = ()=> createObject({cls:"circle",w:140,h:140});
+document.getElementById("addText").onclick = ()=> createObject({cls:"text",w:200,h:60,html:"Double-click to edit"});
+document.getElementById("addImage").onclick = ()=>{
+  const url = prompt("Image URL (direct link)");
+  if(url) createObject({cls:"rect",w:220,h:140,html:`<img src="${escape(url)}" />`});
+};
 
-// z-order buttons
-document.getElementById('bringFront').addEventListener('click', bringForward);
-document.getElementById('sendBack').addEventListener('click', sendBackward);
+document.getElementById("bringFront").onclick = bringForward;
+document.getElementById("sendBack").onclick = sendBackward;
 
-// export/import
-document.getElementById('export').addEventListener('click', ()=>{
-  const out = [];
+document.getElementById("export").onclick = ()=>{
+  const out=[];
   for(const el of objectsLayer.children){
-    if(!el.classList.contains('obj')) continue;
-    const type = el.dataset.type;
+    if(!el.classList.contains("obj")) continue;
     out.push({
-      type,
-      left: parseFloat(el.style.left || 0),
-      top: parseFloat(el.style.top || 0),
-      width: parseFloat(el.style.width || el.offsetWidth),
-      height: parseFloat(el.style.height || el.offsetHeight),
-      html: el.querySelector('.content').innerHTML,
-      z: parseInt(el.style.zIndex || 0, 10)
+      type:el.classList.contains("circle")?'circle':el.classList.contains("text")?'text':'rect',
+      left:parseFloat(el.style.left),
+      top:parseFloat(el.style.top),
+      width:parseFloat(el.style.width),
+      height:parseFloat(el.style.height),
+      html:el.querySelector(".content").innerHTML,
+      z:parseInt(el.style.zIndex)
     });
   }
-  const blob = new Blob([JSON.stringify(out, null, 2)], {type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'objects.json'; document.body.appendChild(a); a.click(); a.remove();
-});
+  const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="objects.json";
+  document.body.appendChild(a); a.click(); a.remove();
+};
 
-document.getElementById('import').addEventListener('click', ()=> document.getElementById('importFile').click());
-document.getElementById('importFile').addEventListener('change', (ev)=>{
-  const f = ev.target.files[0];
+document.getElementById("import").onclick = ()=> importFile.click();
+const importFile=document.getElementById("importFile");
+importFile.onchange = e=>{
+  const f=e.target.files[0];
   if(!f) return;
-  const reader = new FileReader();
-  reader.onload = (e)=>{
+  const reader=new FileReader();
+  reader.onload = ev=>{
     try{
-      const data = JSON.parse(e.target.result);
-      // clear existing
-      objectsLayer.innerHTML = '';
-      zCounter = 1;
+      const data=JSON.parse(ev.target.result);
+      objectsLayer.innerHTML="";
+      zCounter=1;
       for(const item of data){
-        const el = createObject({
-          x: item.left, y: item.top, w: item.width, h: item.height, cls: item.type, html: item.html || ''
+        const el=createObject({
+          x:item.left,y:item.top,w:item.width,h:item.height,
+          cls:item.type,html:item.html
         });
-        if(item.z) el.style.zIndex = item.z;
+        if(item.z) el.style.zIndex=item.z;
       }
       updateStatus();
-    }catch(err){ alert('Invalid file: '+ err.message); }
+    }catch(err){
+      alert("Invalid JSON");
+    }
   };
   reader.readAsText(f);
-  ev.target.value = '';
-});
+};
 
-// clear
-document.getElementById('clearObjs').addEventListener('click', ()=> {
-  if(confirm('Remove all objects?')) { objectsLayer.innerHTML = ''; selected = null; updateStatus(); }
-});
-
-// stage click deselects
-document.getElementById('stage').addEventListener('click', ()=> selectObject(null));
-
-// delete key
-window.addEventListener('keydown', (ev)=>{
-  if(ev.key === 'Delete' || ev.key === 'Backspace'){
-    if(selected){ removeObject(selected); }
+/* clear */
+document.getElementById("clearObjs").onclick = ()=>{
+  if(confirm("Clear all objects?")){
+    objectsLayer.innerHTML="";
+    selected=null;
+    updateStatus();
   }
-  if((ev.ctrlKey || ev.metaKey) && ev.key === 'a'){ // ctrl/cmd+a: select all not implemented, just example
-    // optional
+};
+
+document.getElementById("stage").onclick = ()=> selectObject(null);
+
+/* Delete key */
+window.addEventListener("keydown", e=>{
+  if((e.key==="Delete"||e.key==="Backspace") && selected){
+    removeObject(selected);
   }
 });
 
-// small escape helper
-function escapeHtml(s){ return s.replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+/* HOW TO GUIDE LOGIC */
 
-// Init demo with two objects
+const GUIDE_KEY="guide_state_v1";
+let guideState = loadState();
+
+const guide=document.getElementById("guide");
+const collapseBtn=document.getElementById("collapseGuide");
+const closeBtn=document.getElementById("closeGuide");
+const pinBtn=document.getElementById("pinGuide");
+const helpBtn=document.getElementById("helpBtn");
+const guideContent=document.getElementById("guideContent");
+
+function loadState(){
+  try{
+    return JSON.parse(localStorage.getItem(GUIDE_KEY)) || {open:true,pinned:false};
+  }catch{
+    return {open:true,pinned:false};
+  }
+}
+function saveState(){
+  localStorage.setItem(GUIDE_KEY, JSON.stringify(guideState));
+}
+
+function applyGuide(){
+  if(!guideState.open){
+    guide.classList.add("collapsed");
+    collapseBtn.textContent="+";
+    guideContent.style.display="none";
+    helpBtn.style.display="flex";
+  } else {
+    guide.classList.remove("collapsed");
+    collapseBtn.textContent="–";
+    guideContent.style.display="";
+    helpBtn.style.display="none";
+  }
+  pinBtn.textContent = guideState.pinned ? "📌 Pinned" : "📌 Pin";
+}
+
+applyGuide();
+
+/* Collapse */
+collapseBtn.onclick = ()=>{
+  guideState.open = !guideState.open;
+  applyGuide();
+  saveState();
+};
+
+/* Close (hide) */
+closeBtn.onclick = ()=>{
+  guide.style.display="none";
+  helpBtn.style.display="flex";
+  guideState.open=false;
+  saveState();
+};
+
+/* Pin */
+pinBtn.onclick = ()=>{
+  guideState.pinned=!guideState.pinned;
+  saveState();
+  applyGuide();
+};
+
+/* Help button restores guide */
+helpBtn.onclick = ()=>{
+  guide.style.display="block";
+  guideState.open=true;
+  helpBtn.style.display="none";
+  saveState();
+};
+
+/* init objects */
 createObject({x:40,y:40,w:220,h:130,cls:'rect'});
 createObject({x:300,y:90,w:180,h:180,cls:'circle'});
-createObject({x:80,y:240,w:260,h:90,cls:'text', html:'Double click to edit text'});
+createObject({x:80,y:240,w:260,h:90,cls:'text',html:'Double-click to edit'});
 updateStatus();
-
 </script>
 </body>
 </html>
